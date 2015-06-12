@@ -1,17 +1,34 @@
-Wercker step for AWS Code Deploy
-=======================
+# AWS Code Deploy Executer
 
-[![wercker status](https://app.wercker.com/status/3810984a0833d6af679f0609bd3e18be/m "wercker status")](https://app.wercker.com/project/bykey/3810984a0833d6af679f0609bd3e18be)
+This script deploys applications with the [AWS Code Deploy](http://docs.aws.amazon.com/codedeploy/latest/userguide/welcome.html) service. This script has been adapted to be easily portable and configurable via environment variables such that it can be incorporated within CI services that do not natively include support for Code Deploy. Additionally, this script includes additional functionality described below that is typically not included in out-of-box Code Deploy CI systems. For more information, refer to the [AWS Code Deploy](http://docs.aws.amazon.com/codedeploy/latest/userguide/welcome.html) documentation or
+the [AWS CLI API](http://docs.aws.amazon.com/cli/latest/reference/deploy/index.html).
 
-This wercker step allows to deploy applications with [AWS Code Deploy](http://docs.aws.amazon.com/codedeploy/latest/userguide/welcome.html) service.
+Features:
+ * Compression of source contents
+ * Ability to limit the number of stored revisions by a key prefix to help reduce S3 total file size
+ * Server side encryption for revisions
+ * Full diagnostic output from failed instances
 
-Please read the [AWS Code Deploy](http://docs.aws.amazon.com/codedeploy/latest/userguide/welcome.html) documentation and [API](http://docs.aws.amazon.com/cli/latest/reference/deploy/index.html) before using this step.
+Operating Systems Supported:
+ * Debian
+ * Ubuntu 14.04
 
 
-The step install the [AWS Cli](http://docs.aws.amazon.com/cli/latest/userguide/installing.html) through pip, if the CLI is not already installed. 
+## How to Include In Your Proect
+
+#### 1. Via Composer (For PHP Projects)
+
+#### 2. Git Submodule
+
+#### 3. Git Subtree
 
 
-## AWS Code Deploy workflow
+## Usage
+
+
+
+
+## AWS Code Deploy Workflow
 
 To deploy an application with AWS Code Deploy, the Wercker step follow this steps :
 
