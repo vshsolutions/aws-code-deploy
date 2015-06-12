@@ -1,0 +1,10 @@
+{
+    "name": "techpivot/aws-code-deploy",
+    "description": "AWS Code Deploy Bash Runner.",
+    "license": "MIT",
+    "keywords": [ 
+        "TechPivot", 
+        "AWS",
+        "Code Deploy"
+    ]
+}
