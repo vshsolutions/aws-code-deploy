@@ -12,10 +12,10 @@ underline=$(tput sgr 0 1)
 reset=$(tput sgr0)
 
 red=$(tput setaf 1)
-green=$(tput setaf 76)
+green=$(tput setaf 2)
 white=$(tput setaf 7)
-tan=$(tput setaf 202)
-blue=$(tput setaf 25)
+tan=$(tput setaf 3)
+blue=$(tput setaf 4)
 
 #
 # Headers and Logging
@@ -25,7 +25,7 @@ underline() { printf "${underline}${bold}%s${reset}\n" "$@"
 }
 h1() { printf "\n${underline}${bold}${blue}%s${reset}\n" "$@"
 }
-h2() { printf "\n${underline}${bold}${white}%s${reset}\n" "$@"
+h2() { printf "\n${bold}%s${reset}\n" "$@"
 }
 debug() { printf "${white}%s${reset}\n" "$@"
 }
@@ -42,8 +42,33 @@ bold() { printf "${bold}%s${reset}\n" "$@"
 note() { printf "\n${underline}${bold}${blue}Note:${reset} ${blue}%s${reset}\n" "$@"
 }
 
+# Runs the specified command and logs it appropriately.
+# $1 = command
+# $2 = (optional) error message
+# $3 = (optional) success message
+# $4 = (optional) global variable to assign the output to
+runCommand() {
+  command="$1"
+  info "$1"
+  local output="$(eval $command 2>&1)" 
+  ret_code=$?
 
-type_exists() {
+  if [ $ret_code != 0 ]; then
+    warn "$output"
+    if [ ! -z "$2" ]; then
+      error "$2"
+    fi
+    exit $ret_code
+  fi
+  if [ ! -z "$3" ]; then
+    success "$3"
+  fi
+  if [ ! -z "$4" ]; then
+    eval "$4='$output'"
+  fi
+}
+
+typeExists() {
   if [ $(type -P $1) ]; then
     return 0
   fi
@@ -56,73 +81,73 @@ jsonValue() {
   awk -F"[,:}]" '{for(i=1;i<=NF;i++){if($i~/'$key'\042/){print $(i+1)}}}' | tr -d '"' | sed -n ${num}p
 }
 
-
 # Check variables
-if [ -z "$WERCKER_AWS_CODE_DEPLOY_KEY" ]; then
-  error "Please set the 'key' variable"
+if [ -z "$AWS_CODE_DEPLOY_KEY" ]; then
+  error "Please set the \"\$AWS_CODE_DEPLOY_KEY\" variable"
   exit 1
 fi
 
-if [ -z "$WERCKER_AWS_CODE_DEPLOY_SECRET" ]; then
-  error "Please set the 'secret' variable"
+if [ -z "$AWS_CODE_DEPLOY_SECRET" ]; then
+  error "Please set the \"\$AWS_CODE_DEPLOY_SECRET\" variable"
   exit 1
 fi
 
-if [ -z "$WERCKER_AWS_CODE_DEPLOY_APPLICATION_NAME" ]; then
-  error "Please set the 'application-name' variable"
+if [ -z "$AWS_CODE_DEPLOY_APPLICATION_NAME" ]; then
+  error "Please set the \"\$AWS_CODE_DEPLOY_APPLICATION_NAME\" variable"
   exit 1
 fi
 
-if [ -z "$WERCKER_AWS_CODE_DEPLOY_DEPLOYMENT_GROUP_NAME" ]; then
-  error "Please set the 'deployment-group' variable"
+if [ -z "$AWS_CODE_DEPLOY_DEPLOYMENT_GROUP_NAME" ]; then
+  error "Please set the \"\$AWS_CODE_DEPLOY_DEPLOYMENT_GROUP_NAME\" variable"
   exit 1
 fi
 
-if [ -z "$WERCKER_AWS_CODE_DEPLOY_S3_BUCKET" ]; then
-  error "Please set the 's3-bucket' variable"
+if [ -z "$AWS_CODE_DEPLOY_S3_BUCKET" ]; then
+  error "Please set the \"\$AWS_CODE_DEPLOY_S3_BUCKET\" variable"
   exit 1
 fi
+
 
 # ----- Install AWS Cli -----
 # see documentation http://docs.aws.amazon.com/cli/latest/userguide/installing.html
 # ---------------------------
 
 # Check AWS is installed
-if ! type_exists 'aws'; then
-  h1 "Installing AWS CLI"
-  INSTALL_AWSCLI="sudo pip install awscli"
-  info "$INSTALL_AWSCLI"
-  INSTALL_AWSCLI_OUTPUT=$($INSTALL_AWSCLI 2>&1)
-  if [ $? -ne 0 ]; then
-    warn "$INSTALL_AWSCLI_OUTPUT"
-    exit 1
+h1 "Step 1: Checking Dependencies"
+if ! typeExists "aws"; then
+  if ! typeExists "pip"; then
+    h2 "Installing Python PIP"
+    runCommand "sudo apt-get install -y python-pip"
+    success "Installing PIP (`pip --version`) succeeded"
   fi
+  
+  h2 "Installing AWS CLI"
+  runCommand "sudo pip install awscli"
   success "Installing AWS CLI (`aws --version`) succeeded"
+else
+  success "Depenencies met."
 fi
+
 
 # ----- Configure -----
 # see documentation
 #    http://docs.aws.amazon.com/cli/latest/reference/configure/index.html
 # ----------------------
-set -e
 
-h1 "Step 1: Configuring AWS"
-
+h1 "Step 2: Configuring AWS"
 h2 "Configuring AWS Access Key ID"
-CONFIGURE_KEY_OUTPUT=$(aws configure set aws_access_key_id $WERCKER_AWS_CODE_DEPLOY_KEY 2>&1)
+CONFIGURE_KEY_OUTPUT=$(aws configure set aws_access_key_id $AWS_CODE_DEPLOY_KEY 2>&1)
 success "Configuring AWS Access Key ID succeeded"
-
 h2 "Configuring AWS Secret Access Key"
-CONFIGURE_SECRET_OUTPUT=$(aws configure set aws_secret_access_key $WERCKER_AWS_CODE_DEPLOY_SECRET 2>&1)
+CONFIGURE_SECRET_OUTPUT=$(aws configure set aws_secret_access_key $AWS_CODE_DEPLOY_SECRET 2>&1)
 success "Configuring AWS Secret Access Key succeeded"
 
-if [ -n "$WERCKER_AWS_CODE_DEPLOY_REGION" ]; then
+if [ -n "$AWS_CODE_DEPLOY_REGION" ]; then
   h2 "Configuring AWS default region"
-  CONFIGURE_REGION_OUTPUT=$(aws configure set default.region $WERCKER_AWS_CODE_DEPLOY_REGION 2>&1)
+  CONFIGURE_REGION_OUTPUT=$(aws configure set default.region $AWS_CODE_DEPLOY_REGION 2>&1)
   success "Configuring AWS default region succeeded"
 fi
 
-set +e
 
 # ----- Application -----
 # see documentation
@@ -130,12 +155,12 @@ set +e
 #    http://docs.aws.amazon.com/cli/latest/reference/deploy/create-application.html
 # ----------------------
 # Application variables
-APPLICATION_NAME="$WERCKER_AWS_CODE_DEPLOY_APPLICATION_NAME"
-APPLICATION_VERSION=${WERCKER_AWS_CODE_DEPLOY_APPLICATION_VERSION:-${WERCKER_GIT_COMMIT:0:7}}
+APPLICATION_NAME="$AWS_CODE_DEPLOY_APPLICATION_NAME"
+APPLICATION_VERSION=${AWS_CODE_DEPLOY_APPLICATION_VERSION:-${GIT_COMMIT:0:7}}
 
 # Check application exists
-h1 "Step 2: Defining application"
-h2 "Checking application '$APPLICATION_NAME' exists"
+h1 "Step 3: Checking Application"
+h2 "Checking application \"$APPLICATION_NAME\" exists"
 
 APPLICATION_EXISTS="aws deploy get-application --application-name $APPLICATION_NAME"
 info "$APPLICATION_EXISTS"
@@ -143,33 +168,26 @@ APPLICATION_EXISTS_OUTPUT=$($APPLICATION_EXISTS 2>&1)
 
 if [ $? -ne 0 ]; then
   warn "$APPLICATION_EXISTS_OUTPUT"
-  h2 "Creating application '$APPLICATION_NAME'"
+  h2 "Creating application \"$APPLICATION_NAME\""
 
   # Create application
-  APPLICATION_CREATE="aws deploy create-application --application-name $APPLICATION_NAME"
-  info "$APPLICATION_CREATE"
-  APPLICATION_CREATE_OUTPUT=$($APPLICATION_CREATE 2>&1)
-
-  if [ $? -ne 0 ]; then
-    warn "$APPLICATION_CREATE_OUTPUT"
-    error "Creating application '$APPLICATION_NAME' failed"
-    exit 1
-  fi
-  success "Creating application '$APPLICATION_NAME' succeeded"
+  runCommand "aws deploy create-application --application-name $APPLICATION_NAME" \
+             "Creating application \"$APPLICATION_NAME\" failed" \
+             "Creating application \"$APPLICATION_NAME\" succeeded"
 else
-  success "Application '$APPLICATION_NAME' already exists"
+  success "Application \"$APPLICATION_NAME\" already exists"
 fi
 
 
-# ----- Deployment config (optional) -----
+# ----- Deployment Config (optional) -----
 # see documentation http://docs.aws.amazon.com/cli/latest/reference/deploy/create-deployment-config.html
 # ----------------------
-DEPLOYMENT_CONFIG_NAME=${WERCKER_AWS_CODE_DEPLOY_DEPLOYMENT_CONFIG_NAME:-CodeDeployDefault.OneAtATime}
-MINIMUM_HEALTHY_HOSTS=${WERCKER_AWS_CODE_DEPLOY_MINIMUM_HEALTHY_HOSTS:-type=FLEET_PERCENT,value=75}
+DEPLOYMENT_CONFIG_NAME=${AWS_CODE_DEPLOY_DEPLOYMENT_CONFIG_NAME:-CodeDeployDefault.OneAtATime}
+MINIMUM_HEALTHY_HOSTS=${AWS_CODE_DEPLOY_MINIMUM_HEALTHY_HOSTS:-type=FLEET_PERCENT,value=75}
 
-# Ckeck deployment config exists
-h1 "Step 3: Defining deployment config"
-h2 "Checking deployment config '$DEPLOYMENT_CONFIG_NAME' exists"
+# Check deployment config exists
+h1 "Step 4: Checking Deployment Config"
+h2 "Checking deployment config \"$DEPLOYMENT_CONFIG_NAME\" exists"
 
 DEPLOYMENT_CONFIG_EXISTS="aws deploy get-deployment-config --deployment-config-name $DEPLOYMENT_CONFIG_NAME"
 info "$DEPLOYMENT_CONFIG_EXISTS"
@@ -177,36 +195,29 @@ DEPLOYMENT_CONFIG_EXISTS_OUTPUT=$($DEPLOYMENT_CONFIG_EXISTS 2>&1)
 
 if [ $? -ne 0 ]; then
   warn "$DEPLOYMENT_CONFIG_EXISTS_OUTPUT"
-  h2 "Creating deployment config '$DEPLOYMENT_CONFIG_NAME'"
+  h2 "Creating deployment config \"$DEPLOYMENT_CONFIG_NAME\""
 
- # Create deployment config
-  DEPLOYMENT_CONFIG_CREATE="aws deploy create-deployment-config --deployment-config-name $DEPLOYMENT_CONFIG_NAME --minimum-healthy-hosts $MINIMUM_HEALTHY_HOSTS"
-  info "$DEPLOYMENT_CONFIG_CREATE"
-  DEPLOYMENT_CONFIG_CREATE_OUTPUT=$($DEPLOYMENT_CONFIG_CREATE 2>&1)
-
-  if [ $? -ne 0 ]; then
-    warn "$DEPLOYMENT_CONFIG_CREATE_OUTPUT"
-    error "Creating deployment config '$DEPLOYMENT_CONFIG_NAME' failed"
-    exit 1
-  fi
-  success "Creating deployment config '$DEPLOYMENT_CONFIG_NAME' succeeded"
+  # Create application
+  runCommand "aws deploy create-deployment-config --deployment-config-name $DEPLOYMENT_CONFIG_NAME --minimum-healthy-hosts $MINIMUM_HEALTHY_HOSTS" \
+             "Creating application \"$DEPLOYMENT_CONFIG_NAME\" failed" \
+             "Creating application \"$DEPLOYMENT_CONFIG_NAME\" succeeded"
 else
-  success "Deployment config '$DEPLOYMENT_CONFIG_NAME' already exists"
+  success "Deployment config \"$DEPLOYMENT_CONFIG_NAME\" already exists"
 fi
 
 
-# ----- Deployment group -----
+# ----- Deployment Group -----
 # see documentation http://docs.aws.amazon.com/cli/latest/reference/deploy/create-deployment-config.html
 # ----------------------
 # Deployment group variables
-DEPLOYMENT_GROUP=${WERCKER_AWS_CODE_DEPLOY_DEPLOYMENT_GROUP_NAME:-$WERCKER_DEPLOYTARGET_NAME}
-AUTO_SCALING_GROUPS="$WERCKER_AWS_CODE_DEPLOY_AUTO_SCALING_GROUPS"
-EC2_TAG_FILTERS="$WERCKER_AWS_CODE_DEPLOY_EC2_TAG_FILTERS"
-SERVICE_ROLE_ARN="$WERCKER_AWS_CODE_DEPLOY_SERVICE_ROLE_ARN"
+DEPLOYMENT_GROUP=${AWS_CODE_DEPLOY_DEPLOYMENT_GROUP_NAME:-$DEPLOYTARGET_NAME}
+AUTO_SCALING_GROUPS="$AWS_CODE_DEPLOY_AUTO_SCALING_GROUPS"
+EC2_TAG_FILTERS="$AWS_CODE_DEPLOY_EC2_TAG_FILTERS"
+SERVICE_ROLE_ARN="$AWS_CODE_DEPLOY_SERVICE_ROLE_ARN"
 
-# Ckeck deployment group exists
-h1 "Step 4: Defining deployment group"
-h2 "Checking deployment group '$DEPLOYMENT_GROUP' exists for application '$APPLICATION_NAME'"
+# Check deployment group exists
+h1 "Step 5: Checking Deployment Group"
+h2 "Checking deployment group \"$DEPLOYMENT_GROUP\" exists for application \"$APPLICATION_NAME\""
 
 DEPLOYMENT_GROUP_EXISTS="aws deploy get-deployment-group --application-name $APPLICATION_NAME --deployment-group-name $DEPLOYMENT_GROUP"
 info "$DEPLOYMENT_GROUP_EXISTS"
@@ -214,7 +225,7 @@ DEPLOYMENT_GROUP_EXISTS_OUTPUT=$($DEPLOYMENT_GROUP_EXISTS 2>&1)
 
 if [ $? -ne 0 ]; then
   warn "$DEPLOYMENT_GROUP_EXISTS_OUTPUT"
-  h2 "Creating deployment group '$DEPLOYMENT_GROUP' for application '$APPLICATION_NAME'"
+  h2 "Creating deployment group \"$DEPLOYMENT_GROUP\" for application \"$APPLICATION_NAME\""
 
   # Create deployment group
   DEPLOYMENT_GROUP_CREATE="aws deploy create-deployment-group --application-name $APPLICATION_NAME --deployment-group-name $DEPLOYMENT_GROUP --deployment-config-name $DEPLOYMENT_CONFIG_NAME"
@@ -228,156 +239,277 @@ if [ $? -ne 0 ]; then
   if [ -n "$EC2_TAG_FILTERS" ]; then
     DEPLOYMENT_GROUP_CREATE="$DEPLOYMENT_GROUP_CREATE --ec2-tag-filters $EC2_TAG_FILTERS"
   fi
-  info "$DEPLOYMENT_GROUP_CREATE"
-  DEPLOYMENT_GROUP_CREATE_OUTPUT=$($DEPLOYMENT_GROUP_CREATE 2>&1)
-
-  if [ $? -ne 0 ]; then
-    warn "$DEPLOYMENT_GROUP_CREATE_OUTPUT"
-    error "Creating deployment group '$DEPLOYMENT_GROUP' for application '$APPLICATION_NAME' failed"
-    exit 1
-  fi
-  success "Creating deployment group '$DEPLOYMENT_GROUP' for application '$APPLICATION_NAME' succeeded"
+  
+  runCommand "$DEPLOYMENT_GROUP_CREATE" \
+             "Creating deployment group \"$DEPLOYMENT_GROUP\" for application \"$APPLICATION_NAME\" failed" \
+             "Creating deployment group \"$DEPLOYMENT_GROUP\" for application \"$APPLICATION_NAME\" succeeded"
 else
-  success "Deployment group '$DEPLOYMENT_GROUP' already exists for application '$APPLICATION_NAME'"
+  success "Deployment group \"$DEPLOYMENT_GROUP\" already exists for application \"$APPLICATION_NAME\""
 fi
 
 
-# ----- Push a revision to S3 -----
-# see documentation http://docs.aws.amazon.com/cli/latest/reference/deploy/push.html
-# ----------------------
-REVISION=${WERCKER_AWS_CODE_DEPLOY_REVISION:-$APPLICATION_NAME-$APPLICATION_VERSION.zip}
-REVISION_DESCRIPTION="$WERCKER_AWS_CODE_DEPLOY_REVISION_DESCRIPTION"
+# ----- Compressing Source -----
+APP_SOURCE=$(readlink -f "${AWS_CODE_DEPLOY_APP_SOURCE:-.}")
+APP_LOCAL_FILE="${AWS_CODE_DEPLOY_S3_FILENAME%.*}.zip"
+DEPLOYMENT_COMPRESS_ORIG_DIR_SIZE=$(du -hs $APP_SOURCE | awk '{ print $1}')
+APP_LOCAL_TEMP_FILE="/tmp/$APP_LOCAL_FILE"
 
-S3_BUCKET="$WERCKER_AWS_CODE_DEPLOY_S3_BUCKET"
-S3_SOURCE=${WERCKER_AWS_CODE_DEPLOY_S3_SOURCE:-.}
-S3_KEY=${WERCKER_AWS_CODE_DEPLOY_S3_KEY:-$APPLICATION_NAME}
-
-# Build S3 Location
-S3_LOCATION="s3://$S3_BUCKET"
-if [ -n "$S3_KEY" ]; then
-  S3_LOCATION="$S3_LOCATION/$S3_KEY"
-fi
-S3_LOCATION="$S3_LOCATION/$REVISION"
-
-h1 "Step 5: Pushing to S3"
-PUSH_S3="aws deploy push --application-name $APPLICATION_NAME --s3-location $S3_LOCATION --source $S3_SOURCE"
-if [ -n "$REVISION_DESCRIPTION" ]; then
-  PUSH_S3="$PUSH_S3 --description '$REVISION_DESCRIPTION'"
-fi
-
-info "$PUSH_S3"
-PUSH_S3_OUTPUT=$($PUSH_S3 2>&1)
-
-if [ $? -ne 0 ]; then
-  warn "$PUSH_S3_OUTPUT"
-  error "Pushing revision '$REVISION' to S3 failed"
+h1 "Step 6: Compressing Source Contents"
+if [ ! -d "$APP_SOURCE" ]; then
+  error "The specified source directory \"${APP_SOURCE}\" does not exist."
   exit 1
 fi
-success "Pushing revision '$REVISION' to S3 succeeded"
+if [ ! -e "$APP_SOURCE/appspec.yml" ]; then
+  error "The specified source directory \"${APP_SOURCE}\" does not contain an \"appspec.yml\" in the application root."
+  exit 1
+fi
+if ! typeExists "zip"; then
+  note "Installing zip binaries ..."
+  sudo apt-get install -y zip
+  note "Zip binaries installed."
+fi
+runCommand "cd \"$APP_SOURCE\" && zip -rq \"${APP_LOCAL_TEMP_FILE}\" ." \
+           "Unable to compress \"$APP_SOURCE\"" 
+DEPLOYMENT_COMPRESS_FILESIZE=$(ls -lah "${APP_LOCAL_TEMP_FILE}" | awk '{ print $5}')
+success "Successfully compressed \"$APP_SOURCE\" ($DEPLOYMENT_COMPRESS_ORIG_DIR_SIZE) into \"$APP_LOCAL_FILE\" ($DEPLOYMENT_COMPRESS_FILESIZE)"
 
 
-# ----- Register revision -----
+# ----- Push Bundle to S3 -----
+# see documentation  http://docs.aws.amazon.com/cli/latest/reference/s3/cp.html
+# ----------------------
+h1 "Step 7: Copying Bundle to S3"
+S3_CP="aws s3 cp"
+S3_BUCKET="$AWS_CODE_DEPLOY_S3_BUCKET"
+S3_FULL_BUCKET="$S3_BUCKET"
+
+# Strip off any "/" from front and end, but allow inside
+S3_KEY_PREFIX=$(echo "${AWS_CODE_DEPLOY_S3_KEY_PREFIX}" | sed 's/^\/\?\(.*[^\/]\)\/\?$/\1/')
+
+if [ ! -z "$S3_KEY_PREFIX" ]; then
+    S3_FULL_BUCKET="$S3_FULL_BUCKET/$S3_KEY_PREFIX"
+fi
+
+if [ "$AWS_CODE_DEPLOY_S3_SSE" == "true" ]; then
+  S3_CP="$S3_CP --sse"
+fi
+
+runCommand "$S3_CP \"$APP_LOCAL_TEMP_FILE\" \"s3://$S3_FULL_BUCKET/$APP_LOCAL_FILE\"" \
+           "Copying bundle \"$APP_LOCAL_FILE\" to S3 failed" \
+           "Copying bundle \"$APP_LOCAL_FILE\" to S3 succeeded"
+
+
+# ----- Limit Deploy Revisions per Bucket/Key  -----
+# see documentation  http://docs.aws.amazon.com/cli/latest/reference/s3/cp.html
+# ----------------------
+h1 "Step 8: Limiting Deploy Revisions per Bucket/Key"
+S3_DEPLOY_LIMIT=${AWS_CODE_DEPLOY_S3_LIMIT_BUCKET_FILES:-0}
+if [ $S3_DEPLOY_LIMIT -lt 1 ]; then
+  success "Skipping deploy revision max files per bucket/key."
+else
+  h2 "Checking bucket/key to limit total revisions at ${S3_DEPLOY_LIMIT} files ..."
+  S3_LS_OUTPUT=""
+  runCommand "aws s3 ls \"s3://$S3_FULL_BUCKET/\"" \
+             "Unable to list directory contents \"$S3_BUCKET/\"" \
+             "" \
+             S3_LS_OUTPUT
+  
+  # Sort the output by date first
+  S3_LS_OUTPUT=$(echo "$S3_LS_OUTPUT" | sort)
+
+  # Filter out S3 prefixes (These do not count, especially useful in root bucket location)
+  S3_FILES=()
+  IFS=$'\n';
+  for line in $S3_LS_OUTPUT; do 
+    if [[ ! $line =~ ^[[:space:]]+PRE[[:space:]].*$ ]]; then
+      S3_FILES+=("$line")
+    fi
+  done
+  
+  S3_TOTAL_FILES=${#S3_FILES[@]}
+  S3_NUMBER_FILES_TO_CLEAN=$(($S3_TOTAL_FILES-$S3_DEPLOY_LIMIT))
+  if [ $S3_NUMBER_FILES_TO_CLEAN -gt 0 ]; then
+    h2 "Removing oldest $S3_NUMBER_FILES_TO_CLEAN file(s) ..."
+    for line in "${S3_FILES[@]}"; do 
+      if [ $S3_NUMBER_FILES_TO_CLEAN -le 0 ]; then
+        success "Successfuly removed $(($S3_TOTAL_FILES-$S3_DEPLOY_LIMIT)) file(s)"
+        break
+      fi
+      FILE_LINE=$(expr "$line" : '^.*[0-9]\{2\}\:[0-9]\{2\}\:[0-9]\{2\}[ ]\+[0-9]\+[ ]\+\(.*\)$')
+      runCommand "aws s3 rm \"s3://$S3_FULL_BUCKET/$FILE_LINE\""
+      ((S3_NUMBER_FILES_TO_CLEAN--))
+    done
+  else
+    success "File count under limit. No need to remove old files. (Total Files = $S3_TOTAL_FILES, Limit = $S3_DEPLOY_LIMIT)"
+  fi
+fi
+
+
+# ----- Register Revision -----
 # see documentation http://docs.aws.amazon.com/cli/latest/reference/deploy/register-application-revision.html
 # ----------------------
-h1 "Step 6: Registering revision"
+h1 "Step 9: Registering Revision"
 
-# Build S3 Location
-BUNDLE_TYPE=${REVISION##*.}
-S3_LOCATION="bucket=$S3_BUCKET,bundleType=$BUNDLE_TYPE"
+BUNDLE_TYPE=${APP_LOCAL_FILE##*.}
+REGISTER_APP_CMD="aws deploy register-application-revision --application-name \"$APPLICATION_NAME\""
 
-if [ -n "$S3_KEY" ]; then
-  S3_LOCATION="$S3_LOCATION,key=$S3_KEY/$REVISION"
+if [ -n "$S3_KEY_PREFIX" ]; then
+  S3_LOCATION="bucket=$S3_BUCKET,bundleType=$BUNDLE_TYPE,key=$S3_KEY_PREFIX/$APP_LOCAL_FILE"
 else
-  S3_LOCATION="$S3_LOCATION,key=$REVISION"
+  S3_LOCATION="bucket=$S3_BUCKET,bundleType=$BUNDLE_TYPE,key=$APP_LOCAL_FILE"
 fi
 
-# Define egister-application-revision command
-REGISTER_REVISION="aws deploy register-application-revision --application-name $APPLICATION_NAME --s3-location $S3_LOCATION"
-if [ -n "$REVISION_DESCRIPTION" ]; then
-  REGISTER_REVISION="$REGISTER_REVISION --description '$REVISION_DESCRIPTION'"
+REGISTER_APP_CMD="$REGISTER_APP_CMD --s3-location $S3_LOCATION"
+
+if [ ! -z "$AWS_CODE_DEPLOY_REVISION_DESCRIPTION" ]; then
+    REGISTER_APP_CMD="$REGISTER_APP_CMD --description \"$AWS_CODE_DEPLOY_REVISION_DESCRIPTION\""
 fi
 
-info "$REGISTER_REVISION"
-REGISTER_REVISION_OUTPUT=$($REGISTER_REVISION 2>&1)
-
-if [ $? -ne 0 ]; then
-  warn "$REGISTER_REVISION_OUTPUT"
-  error "Registering revision '$REVISION' failed"
-  exit 1
-fi
-success "Registering revision '$REVISION' succeeded"
+runCommand "$REGISTER_APP_CMD" \
+           "Registering revision failed" \
+           "Registering revision succeeded"
 
 
-# ----- Deployment -----
+# ----- Create Deployment -----
 # see documentation http://docs.aws.amazon.com/cli/latest/reference/deploy/create-deployment.html
 # ----------------------
-DEPLOYMENT_DESCRIPTION="$WERCKER_AWS_CODE_DEPLOY_DEPLOYMENT_DESCRIPTION"
-DEPLOYMENT_OVERVIEW=${WERCKER_AWS_CODE_DEPLOY_DEPLOYMENT_OVERVIEW:-true}
+DEPLOYMENT_DESCRIPTION="$AWS_CODE_DEPLOY_DEPLOYMENT_DESCRIPTION"
+DEPLOYMENT_OVERVIEW=${AWS_CODE_DEPLOY_DEPLOYMENT_OVERVIEW:-true}
 
-h1 "Step 7: Creating deployment"
-DEPLOYMENT="aws deploy create-deployment --application-name $APPLICATION_NAME --deployment-config-name $DEPLOYMENT_CONFIG_NAME --deployment-group-name $DEPLOYMENT_GROUP --s3-location $S3_LOCATION"
+h1 "Step 10: Creating Deployment"
+DEPLOYMENT_CMD="aws deploy create-deployment --application-name $APPLICATION_NAME --deployment-config-name $DEPLOYMENT_CONFIG_NAME --deployment-group-name $DEPLOYMENT_GROUP --s3-location $S3_LOCATION"
 
 if [ -n "$DEPLOYMENT_DESCRIPTION" ]; then
-  DEPLOYMENT="$DEPLOYMENT --description \"$DEPLOYMENT_DESCRIPTION\""
+  DEPLOYMENT_CMD="$DEPLOYMENT_CMD --description \"$DEPLOYMENT_DESCRIPTION\""
 fi
-info "$DEPLOYMENT"
-DEPLOYMENT_OUTPUT=$($DEPLOYMENT 2>&1)
 
-if [ $? -ne 0 ]; then
-  warn "$DEPLOYMENT_OUTPUT"
-  error "Deployment of application '$APPLICATION_NAME' on deployment group '$DEPLOYMENT_GROUP' failed"
-  exit 1
-fi
+DEPLOYMENT_OUTPUT=""
+runCommand "$DEPLOYMENT_CMD" \
+           "Deployment of application \"$APPLICATION_NAME\" on deployment group \"$DEPLOYMENT_GROUP\" failed" \
+           "" \
+           DEPLOYMENT_OUTPUT
 
 DEPLOYMENT_ID=$(echo $DEPLOYMENT_OUTPUT | jsonValue 'deploymentId' | tr -d ' ')
 note "You can follow your deployment at: https://console.aws.amazon.com/codedeploy/home#/deployments/$DEPLOYMENT_ID"
 
-if [ 'true' = "$DEPLOYMENT_OVERVIEW" ]; then
-  h1  "Deployment Overview"
-  DEPLOYMENT_GET="aws deploy get-deployment --deployment-id $DEPLOYMENT_ID"
+
+# ----- Monitor Deployment -----
+# see documentation http://docs.aws.amazon.com/cli/latest/reference/deploy/create-deployment.html
+# ----------------------
+if [ "true" = "$DEPLOYMENT_OVERVIEW" ]; then
+  h1 "Deployment Overview"
+  
+  if ! typeExists "jshon"; then
+    h2 "Installing Monitoring Dependency: \"jshon\""
+    runCommand "sudo apt-get install -y jshon"
+    success "Installing jshon (Version: `jshon --version`) succeeded"
+  fi
+  
+  DEPLOYMENT_GET="aws deploy get-deployment --deployment-id \"$DEPLOYMENT_ID\""  
+  h2 "Monitoring deployment \"$DEPLOYMENT_ID\" for \"$APPLICATION_NAME\" on deployment group $DEPLOYMENT_GROUP ..."
   info "$DEPLOYMENT_GET"
-
-  h2  "Deploying application '$APPLICATION_NAME' on deployment group '$DEPLOYMENT_GROUP'"
-
+  printf "\n"
+      
   while :
     do
-      sleep 5
-      DEPLOYMENT_GET_OUTPUT=$($DEPLOYMENT_GET 2>&1 > /tmp/$DEPLOYMENT_ID)
-      if [ $? -ne 0 ]; then
-        printf "\n"
-        warn "$DEPLOYMENT_OUTPUT"
-        error "Deployment of application '$APPLICATION_NAME' on deployment group '$DEPLOYMENT_GROUP' failed"
+      DEPLOYMENT_GET_OUTPUT="$(eval $DEPLOYMENT_GET 2>&1)"
+      if [ $? != 0 ]; then
+        warn "$DEPLOYMENT_GET_OUTPUT"
+        error "Deployment of application \"$APPLICATION_NAME\" on deployment group \"$DEPLOYMENT_GROUP\" failed"
         exit 1
       fi
-
-      # Deployment Status
-      STATUS=$(cat /tmp/$DEPLOYMENT_ID | jsonValue 'status' | tr -d '\r\n' | tr -d ' ')
-      ERROR_MESSAGE=$(cat /tmp/$DEPLOYMENT_ID | jsonValue 'message')
-
-      # Deployment failed
-      if [ "$STATUS" = 'Failed' ]; then
-          printf "\n"
-          error "Deployment of application '$APPLICATION_NAME' on deployment group '$DEPLOYMENT_GROUP' failed: $ERROR_MESSAGE"
-          exit 1
-      fi
-
+      
       # Deployment Overview
-      IN_PROGRESS=$(cat /tmp/$DEPLOYMENT_ID | jsonValue 'InProgress' | tr -d '\r\n' | tr -d ' ')
-      PENDING=$(cat /tmp/$DEPLOYMENT_ID | jsonValue 'Pending' | tr -d '\r\n' | tr -d ' ')
-      SKIPPED=$(cat /tmp/$DEPLOYMENT_ID | jsonValue 'Skipped' | tr -d '\r\n' | tr -d ' ')
-      SUCCEEDED=$(cat /tmp/$DEPLOYMENT_ID | jsonValue 'Succeeded' | tr -d '\r\n' | tr -d ' ')
-      FAILED=$(cat /tmp/$DEPLOYMENT_ID | jsonValue 'Failed' | tr -d '\r\n' | tr -d ' ')
-      printf "\r| In Progress: $IN_PROGRESS | Pending: $PENDING | Skipped: $SKIPPED | Succeeded: $SUCCEEDED | Failed: $FAILED |"
+      IN_PROGRESS=$(echo "$DEPLOYMENT_GET_OUTPUT" | jsonValue "InProgress" | tr -d "\r\n ")
+      PENDING=$(echo "$DEPLOYMENT_GET_OUTPUT" | jsonValue "Pending" | tr -d "\r\n ")
+      SKIPPED=$(echo "$DEPLOYMENT_GET_OUTPUT" | jsonValue "Skipped" | tr -d "\r\n ")
+      SUCCEEDED=$(echo "$DEPLOYMENT_GET_OUTPUT" | jsonValue "Succeeded" | tr -d "\r\n ")
+      FAILED=$(echo "$DEPLOYMENT_GET_OUTPUT" | jsonValue "Failed" | tr -d "\r\n ")
 
+      if [ "$IN_PROGRESS" == "" ]; then IN_PROGRESS="-"; fi
+      if [ "$PENDING" == "" ]; then PENDING="-"; fi
+      if [ "$SKIPPED" == "" ]; then SKIPPED="-"; fi
+      if [ "$SUCCEEDED" == "" ]; then SUCCEEDED="-"; fi
+      if [ "$FAILED" == "" ]; then FAILED="-"; fi
+      
+      # Deployment Status
+      STATUS=$(echo "$DEPLOYMENT_GET_OUTPUT" | jsonValue "status" | tr -d "\r\n" | tr -d " ")
+      ERROR_MESSAGE=$(echo "$DEPLOYMENT_GET_OUTPUT" | jsonValue "message")
+
+      printf "\r${bold}Status${reset}  | In Progress: $IN_PROGRESS | Pending: $PENDING  | Skipped: $SKIPPED  | Succeeded: $SUCCEEDED  | Failed: $FAILED  | "
+
+      # Print Failed Details
+      if [ "$STATUS" == "Failed" ]; then
+        printf "\n"
+        error "Deployment failed: $ERROR_MESSAGE"
+          
+        # Retrieve failed instances
+        LIST_INSTANCES_OUTPUT=""
+        h2 "Retrieving failed instance details ..."
+        runCommand "aws deploy list-deployment-instances --deployment-id $DEPLOYMENT_ID --instance-status-filter Failed" \
+                   "" \
+                   "" \
+                   LIST_INSTANCES_OUTPUT
+                     
+        INSTANCE_IDS=($(echo $LIST_INSTANCES_OUTPUT | jshon -e instancesList | tr -d '",[] '))
+        success "Found ${#INSTANCE_IDS[@]} failed instance(s) [ ${INSTANCE_IDS[@]} ]"
+          
+        # Enumerate over each failed instance
+        for i in "${!INSTANCE_IDS[@]}"; do
+          FAILED_INSTANCE_OUTPUT=$(aws deploy get-deployment-instance --deployment-id $DEPLOYMENT_ID --instance-id ${INSTANCE_IDS[$i]})
+            
+          I_ID=$(echo $FAILED_INSTANCE_OUTPUT | jshon -e instanceSummary -e instanceId | tr -d '"' | sed 's/\\\//\//g')
+          I_STATUS=$(echo $FAILED_INSTANCE_OUTPUT | jshon -e instanceSummary -e status | tr -d '"')
+          I_LAST_UPDATED=$(echo $FAILED_INSTANCE_OUTPUT | jshon -e instanceSummary -e lastUpdatedAt | tr -d '"')
+          EVENT_NAMES=($(echo $FAILED_INSTANCE_OUTPUT | jshon -e instanceSummary -e lifecycleEvents -a -e lifecycleEventName | tr -d '"'))
+          
+          printf "\n${bold}Instance: ${INSTANCE_IDS[$i]}${reset}\n"
+          printf "    Instance ID:  %s\n" "$I_ID"
+          printf "         Status:  %s\n" "$I_STATUS"
+          printf "Last Updated At:  %s\n\n" "$(date -d @$I_LAST_UPDATED)"
+            
+          for i in "${!EVENT_NAMES[@]}"; do
+            E_STATUS=$(echo $FAILED_INSTANCE_OUTPUT | jshon -e instanceSummary -e lifecycleEvents -e $i -e status | tr -d '"')
+    
+            case "$E_STATUS" in
+              Failed)
+                I_E_ERR_CODE=$(echo $FAILED_INSTANCE_OUTPUT | jshon -e instanceSummary -e lifecycleEvents -e $i -e diagnostics -e errorCode | tr -d '"')
+                I_E_SCRIPT_NAME=$(echo $FAILED_INSTANCE_OUTPUT | jshon -e instanceSummary -e lifecycleEvents -e $i -e diagnostics -e scriptName | tr -d '"' | sed 's/\\\//\//g')
+                I_MESSAGE=$(echo $FAILED_INSTANCE_OUTPUT | jshon -e instanceSummary -e lifecycleEvents -e $i -e diagnostics -e message | tr -d '"' | sed 's/\\\//\//g')
+                I_E_LOG_TAIL=$(echo $FAILED_INSTANCE_OUTPUT | jshon -e instanceSummary -e lifecycleEvents -e $i -e diagnostics -e logTail | tr -d '"' | sed 's/\\\//\//g')
+              
+                printf "${bold}${red}%s${reset}\t%s\n" "[$E_STATUS]" "${EVENT_NAMES[$i]}"
+                printf "    ${red}%s:\t\t%s${reset}\n" "Error Code" "$I_E_ERR_CODE"
+                printf "    ${red}%s:\t%s${reset}\n" "Script Name" "$I_E_SCRIPT_NAME"
+                printf "    ${red}%s:\t\t%s${reset}\n" "Message" "$I_MESSAGE"
+                printf "${red}=== Log Tail =================================\n%b\n" "$I_E_LOG_TAIL"
+                printf "${red}==============================================${reset}\n"
+                ;;
+                  
+              Succeeded)
+                printf "${bold}${green}%s${reset}\t%s\n" "[$E_STATUS]" "${EVENT_NAMES[$i]}"
+                ;;
+                  
+              Skipped)
+                printf "${bold}%s${reset}\t%s\n" "[$E_STATUS]" "${EVENT_NAMES[$i]}"
+                
+            esac
+
+          done
+          # ~ end: instance-events
+          
+        done
+        # ~ end: instance
+        
+        exit 1
+      fi
+      
       # Deployment succeeded
-      if [ "$STATUS" = 'Succeeded' ]; then
+      if [ "$STATUS" == "Succeeded" ]; then
          printf "\n"
-         success "Deployment of application '$APPLICATION_NAME' on deployment group '$DEPLOYMENT_GROUP' succeeded"
+         success "Deployment of application \"$APPLICATION_NAME\" on deployment group \"$DEPLOYMENT_GROUP\" succeeded"
          break
       fi
-    done
-else
-  info "Deployment of application '$APPLICATION_NAME' on deployment group '$DEPLOYMENT_GROUP' in progress"
-fi
 
-set -e
+      sleep 2
+   done
+fi
