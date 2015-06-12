@@ -6,5 +6,6 @@
         "TechPivot", 
         "AWS",
         "Code Deploy"
-    ]
+    ],
+    "bin": ["aws-code-deploy.sh"]
 }
