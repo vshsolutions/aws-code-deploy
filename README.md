@@ -64,7 +64,7 @@ AWS_CODE_DEPLOY_DEPLOYMENT_DESCRIPTION
 
 To deploy an application with AWS Code Deploy, the Wercker step follow this steps :
 
-#### Step 1: [Checking Dependencies]
+#### Step 1: Checking Dependencies
 
 The following executables are installed:
     * python-pip
@@ -110,7 +110,7 @@ Environment Variables:
 * `AWS_CODE_DEPLOY_EC2_TAG_FILTERS` (optional): EC2 tags to filter on when creating a deployment group
 * `AWS_CODE_DEPLOY_AUTO_SCALING_GROUPS` (optional): Auto Scaling groups when creating a deployment group
 
-#### Step 6: [Compressing Source]
+#### Step 6: Compressing Source
 
 This step compresses the specified source directory as a zip file in preparation for uploading to S3. This is useful for application deployments that use unique file names per revision. This helps limit the transfer to and from S3 during deployment.
 
@@ -135,7 +135,7 @@ AWS_CODE_DEPLOY_S3_FILENAME="100#c3a5fea.zip"
 # The resulting stored file would exist at s3://my-bucket-test/production-www/100#c3a5fea.zip
 ```
 
-#### Step 8: [Limiting Deploy Revisions per Bucket/Key]
+#### Step 8: Limiting Deploy Revisions per Bucket/Key
 
 This step ensures that applications with high revision/commit volume with unique filenames can remove old revisions to help limit the size of the container. Large teams can quickly fill S3 with multiple TBs/day depending on the projects. Since deployments typically don't need to store that many versions backwards, this step will ensure that only N revisions exist, removing oldest revisions upon deploy.
 
@@ -160,7 +160,7 @@ Environment Variables:
 
 * `AWS_CODE_DEPLOY_DEPLOYMENT_DESCRIPTION` (optional): A description that is stored within AWS Code Deploy that stores information about the specific revision.
 
-#### [Monitor Deployment]
+#### Monitor Deployment
 
 This step monitors the deployment and logs information about the overall status as well as any failed instance statuses.
 
