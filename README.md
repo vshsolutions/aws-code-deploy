@@ -32,8 +32,13 @@ AWS_CODE_DEPLOY_REGION
 
 AWS_CODE_DEPLOY_APPLICATION_NAME
 
-AWS_CODE_DEPLOY_DEPLOYMENT_GROUP_NAME
 AWS_CODE_DEPLOY_DEPLOYMENT_CONFIG_NAME
+AWS_CODE_DEPLOY_MINIMUM_HEALTHY_HOSTS
+
+AWS_CODE_DEPLOY_DEPLOYMENT_GROUP_NAME
+AWS_CODE_DEPLOY_SERVICE_ROLE_ARN
+AWS_CODE_DEPLOY_EC2_TAG_FILTERS
+AWS_CODE_DEPLOY_AUTO_SCALING_GROUPS
 
 AWS_CODE_DEPLOY_APP_SOURCE
 
@@ -44,6 +49,7 @@ AWS_CODE_DEPLOY_S3_LIMIT_BUCKET_FILES
 AWS_CODE_DEPLOY_S3_SSE
 
 AWS_CODE_DEPLOY_REVISION_DESCRIPTION
+AWS_CODE_DEPLOY_DEPLOYMENT_DESCRIPTION
 ```
 
 
@@ -54,76 +60,115 @@ AWS_CODE_DEPLOY_REVISION_DESCRIPTION
 
 
 
-## AWS Code Deploy Workflow
+## AWS Code Deploy Workflow with Variable Information
 
 To deploy an application with AWS Code Deploy, the Wercker step follow this steps :
 
-#### Step 1 : [Configuring AWS](http://docs.aws.amazon.com/cli/latest/reference/configure/index.html)
+#### Step 1: [Checking Dependencies]
 
-This initial step consists on configuring AWS.
+The following executables are installed:
+    * python-pip
+    * aws
 
-The following configuration allows to setup this step :
+#### Step 2: [Configuring AWS](http://docs.aws.amazon.com/cli/latest/reference/configure/index.html)
 
-* `key` (required): AWS Access Key ID
-* `secret` (required): AWS Secret Access Key
-* `region` (optional): Default region name
+This step ensures that configuration parameters for AWS cli are properly set.
 
-#### Step 2 : [Defining Application](http://docs.aws.amazon.com/cli/latest/reference/deploy/create-application.html)
+Environment Variables:
 
-This second step consists on defining the application. If the application does not exists this step create the application in Code Deploy.
+* `AWS_CODE_DEPLOY_KEY` (optional): AWS Access Key ID. If not already configured in **aws** cli, this is required.
+* `AWS_CODE_DEPLOY_SECRET` (optional): AWS Secret Access Key. If not already configured in **aws** cli, this is required.
+* `AWS_CODE_DEPLOY_REGION` (optional): Default region name
 
-The following configuration allows to setup this step :
+#### Step 3: [Checking Application](http://docs.aws.amazon.com/cli/latest/reference/deploy/create-application.html)
 
-* `application-name` (required): Name of the application to deploy
-* `application-version` (optional): Version of the application to deploy. By default: Short commit id _(eg. fec8f4a)_
+This step ensures the application exists within Code Deploy. If it does not exist, it will attempt to create the application with the specified name.
 
-#### Step 3 : [Defining Deployment Config](http://docs.aws.amazon.com/cli/latest/reference/deploy/create-deployment-config.html) (optional)
+Environment Variables:
 
-This step consists on creating a deployment config. This step is totally *optional* because you can use the deployment strategy already defined in Code Deploy.
+* `AWS_CODE_DEPLOY_APPLICATION_NAME` (required): Name of the application to deploy
 
-The following configuration allows to setup this step :
+#### Step 4: [Deployment Config](http://docs.aws.amazon.com/cli/latest/reference/deploy/create-deployment-config.html) (optional)
 
-* `deployment-config-name` (optional): Deployment config name. By default : _CodeDeployDefault.OneAtATime_
-* `minimum-healthy-hosts` (optional): The minimum number of healthy instances during deployment. By default : _type=FLEET_PERCENT,value=75_
+This step ensures the specified deployment configuration exists for the application. Defining a custom configuration is *optional* because you can use the deployment strategy already defined in Code Deploy.
 
-#### Step 4 : [Defining Deployment Group](http://docs.aws.amazon.com/cli/latest/reference/deploy/create-deployment-group.html)
+Environment Variables:
 
-This step consists on defining a deployment group. If the deployment group provided does not exists this step create a deployment group in Code Deploy.
+* `AWS_CODE_DEPLOY_DEPLOYMENT_CONFIG_NAME` (optional): Deployment config name. By default: _CodeDeployDefault.OneAtATime_. Built-in options:
+    * CodeDeployDefault.OneAtATime
+    * CodeDeployDefault.AllAtOnce
+* `AWS_CODE_DEPLOY_MINIMUM_HEALTHY_HOSTS` (optional): The minimum number of healthy instances during deployment. By default: _type=FLEET_PERCENT,value=75_
 
-The following configuration allows to setup this step :
+#### Step 5: [Deployment Group](http://docs.aws.amazon.com/cli/latest/reference/deploy/create-deployment-group.html)
 
-* `deployment-group-name` (required): Deployment group name
-* `service-role-arn` (optional): Service role arn giving permissions to use Code Deploy when creating a deployment group
-* `ec2-tag-filters` (optional): EC2 tags to filter on when creating a deployment group
-* `auto-scaling-groups` (optional): Auto Scaling groups when creating a deployment group
+This step ensures the deployment group exists within the specified application. If it does not exist, the script will attempt to create the group using the name and defined service role ARN.
 
-#### Step 5 : [Pushing to S3](http://docs.aws.amazon.com/cli/latest/reference/deploy/push.html)
+Environment Variables:
+
+* `AWS_CODE_DEPLOY_DEPLOYMENT_GROUP_NAME` (required): Deployment group name
+* `AWS_CODE_DEPLOY_SERVICE_ROLE_ARN` (required): Service role arn giving permissions to use Code Deploy when creating a deployment group
+* `AWS_CODE_DEPLOY_EC2_TAG_FILTERS` (optional): EC2 tags to filter on when creating a deployment group
+* `AWS_CODE_DEPLOY_AUTO_SCALING_GROUPS` (optional): Auto Scaling groups when creating a deployment group
+
+#### Step 6: [Compressing Source]
+
+This step compresses the specified source directory as a zip file in preparation for uploading to S3. This is useful for application deployments that use unique file names per revision. This helps limit the transfer to and from S3 during deployment.
+
+Environment Variables:
+
+* `AWS_CODE_DEPLOY_APP_SOURCE` (required): Specifies the root source contents of the application. The `appspec.yml` should exist within this directory. If not specified, the script will use the current working directory.
+* `AWS_CODE_DEPLOY_S3_FILENAME` (required): The destination name within S3. Note that this should **not** include any prefix keys as these are defined elsewhere. A recommended good practice would be to use a combination of the CI build number with the git short revision. (e.g. "100#c3a5fea.zip")
+
+#### Step 7: [Pushing to S3](http://docs.aws.amazon.com/cli/latest/reference/deploy/push.html)
 
 This step consists to push the application to S3.
 
-The following configuration allows to setup this step :
+Environment Variables:
 
-* `s3-bucket` (required): S3 Bucket
-* `s3-source` (optional): S3 Source. By default : _._
-* `s3-key` (optional): S3 Key. By default: _{application-name}_
+* `AWS_CODE_DEPLOY_S3_BUCKET` (required): The name of the S3 bucket to deploy the revision
+* `AWS_CODE_DEPLOY_S3_KEY_PREFIX` (optional): A prefix to use for the file key. It's highly recommended to structure a bucket with a prefix per deployment group. This allows to limit stored revisions per deployment group. Note: A leading or trailing slash is not required.  For example:
+```
+AWS_CODE_DEPLOY_S3_BUCKET="my-bucket-test"
+AWS_CODE_DEPLOY_S3_KEY_PREFIX="production-www"
+AWS_CODE_DEPLOY_S3_FILENAME="100#c3a5fea.zip"
 
-#### Step 6 : [Registering Revision](http://docs.aws.amazon.com/cli/latest/reference/deploy/register-application-revision.html)
+# The resulting stored file would exist at s3://my-bucket-test/production-www/100#c3a5fea.zip
+```
 
-This step consists to register the revision in Code Deploy.
+#### Step 8: [Limiting Deploy Revisions per Bucket/Key]
 
-The following configuration allows to setup this step :
+This step ensures that applications with high revision/commit volume with unique filenames can remove old revisions to help limit the size of the container. Large teams can quickly fill S3 with multiple TBs/day depending on the projects. Since deployments typically don't need to store that many versions backwards, this step will ensure that only N revisions exist, removing oldest revisions upon deploy.
 
-* `revision` (optional): Revision of the application to deploy. By default: _{application-name}-{application-version}.zip_
-* `revision-description` (optional): Description of the revision of the application to deploy
+Environment Variables:
 
-#### Step 7 : [Creating Deployment](http://docs.aws.amazon.com/cli/latest/reference/deploy/create-deployment.html)
+* `AWS_CODE_DEPLOY_S3_LIMIT_BUCKET_FILES` (optional): Number of revisions to limit. If 0, unlimited. By default: 0
 
-This final step consists to create the deployment in Code Deploy.
+#### Step 9: [Registering Revision](http://docs.aws.amazon.com/cli/latest/reference/deploy/register-application-revision.html)
 
-The following configuration allows to setup this step :
+This step registers a code deploy revision for the uploaded file to the specified application/deployment group.
 
-* `deployment-description` (optional): Description of the deployment
-* `deployment-overview` (optional): Visualize the deployment. By default : _true_
+Environment Variables:
+
+* `AWS_CODE_DEPLOY_REVISION_DESCRIPTION` (optional): A description that is stored within AWS Code Deploy that stores information about the specific revision. Typically, the revision details would store information specific to the commit/CI/build details.
+
+
+#### Step 10: [Creating Deployment](http://docs.aws.amazon.com/cli/latest/reference/deploy/create-deployment.html)
+
+This step deploys the application revision using the defined deployment settings across all hosts that match the deployment group.
+
+Environment Variables:
+
+* `AWS_CODE_DEPLOY_DEPLOYMENT_DESCRIPTION` (optional): A description that is stored within AWS Code Deploy that stores information about the specific revision.
+
+#### [Monitor Deployment]
+
+This step monitors the deployment and logs information about the overall status as well as any failed instance statuses.
+
+Environment Variables:
+
+* `AWS_CODE_DEPLOY_DEPLOYMENT_OVERVIEW` (optional): Boolean that specifies whether to log detailed information about the status of the deployment. By Default: _true_
+
+
 
 ## Example
 
