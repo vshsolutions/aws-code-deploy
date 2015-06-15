@@ -60,8 +60,8 @@ AWS_CODE_DEPLOY_DEPLOYMENT_DESCRIPTION
 #### Step 1: Checking Dependencies
 
 The following executables are installed:
-    * python-pip
-    * aws
+  * python-pip
+  * aws
 
 #### Step 2: [Configuring AWS](http://docs.aws.amazon.com/cli/latest/reference/configure/index.html)
 
