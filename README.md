@@ -17,11 +17,19 @@ the [AWS CLI API](http://docs.aws.amazon.com/cli/latest/reference/deploy/index.h
 
 ## How to Include In Your Project
 
-#### 1. Via Composer (For PHP Projects)
+1. Via Composer (For PHP Projects)
+  * Include in `composer.json` as follows:
 
-#### 2. Git Submodule
+   ```json
+   "require-dev" : {
+        "techpivot/aws-code-deploy": "dev-master"
+    }
+    ```
+  * The file can then be executed from the /vendor/bin directory: `bash ./vendor/bin/aws-code-deploy.sh`
 
-#### 3. Git Subtree
+2. Git Submodule
+
+3. Git Subtree
 
 
 ## Variables
