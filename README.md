@@ -47,12 +47,13 @@ AWS_CODE_DEPLOY_REVISION_DESCRIPTION
 AWS_CODE_DEPLOY_DEPLOYMENT_DESCRIPTION
 ```
 
+## Examples
 
-## Usage
+### CircleCI
 
+### TravisCI
 
-
-
+### Manual
 
 
 ## AWS Code Deploy Workflow with Detailed Variable Information
@@ -160,23 +161,3 @@ This step monitors the deployment and logs information about the overall status 
 Environment Variables:
 
 * `AWS_CODE_DEPLOY_DEPLOYMENT_OVERVIEW` (optional): Boolean that specifies whether to log detailed information about the status of the deployment. By Default: _true_
-
-
-
-## Example
-
-The following example deploy an `hello` application on the deployment group `development` after pushed the application on the `apps.mycompany.com` S3 bucket :
-
-```
-deploy:
-  steps:
-    - nhuray/aws-code-deploy:
-       key: aws_access_key_id
-       secret: aws_access_secret_id
-       application-name: hello
-       application-version: 1.1.0
-       deployment-group-name: development
-       service-role-arn: arn:aws:iam::89862646$091:role/CodeDeploy
-       ec2-tag-filters: Key=app,Value=hello,Type=KEY_AND_VALUE Key=environment,Value=development,Type=KEY_AND_VALUE
-       s3-bucket: apps.mycompany.com
-```
