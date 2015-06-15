@@ -10,11 +10,12 @@ Features:
  * Full diagnostic output from failed instances
 
 Operating Systems Supported:
- * Debian
+ * Debian 7
+ * Ubuntu 12.04
  * Ubuntu 14.04
 
 
-## How to Include In Your Proect
+## How to Include In Your Project
 
 #### 1. Via Composer (For PHP Projects)
 
@@ -29,25 +30,19 @@ Operating Systems Supported:
 AWS_CODE_DEPLOY_KEY
 AWS_CODE_DEPLOY_SECRET
 AWS_CODE_DEPLOY_REGION
-
 AWS_CODE_DEPLOY_APPLICATION_NAME
-
 AWS_CODE_DEPLOY_DEPLOYMENT_CONFIG_NAME
 AWS_CODE_DEPLOY_MINIMUM_HEALTHY_HOSTS
-
 AWS_CODE_DEPLOY_DEPLOYMENT_GROUP_NAME
 AWS_CODE_DEPLOY_SERVICE_ROLE_ARN
 AWS_CODE_DEPLOY_EC2_TAG_FILTERS
 AWS_CODE_DEPLOY_AUTO_SCALING_GROUPS
-
 AWS_CODE_DEPLOY_APP_SOURCE
-
 AWS_CODE_DEPLOY_S3_BUCKET
 AWS_CODE_DEPLOY_S3_KEY_PREFIX
 AWS_CODE_DEPLOY_S3_FILENAME
 AWS_CODE_DEPLOY_S3_LIMIT_BUCKET_FILES
 AWS_CODE_DEPLOY_S3_SSE
-
 AWS_CODE_DEPLOY_REVISION_DESCRIPTION
 AWS_CODE_DEPLOY_DEPLOYMENT_DESCRIPTION
 ```
@@ -60,9 +55,7 @@ AWS_CODE_DEPLOY_DEPLOYMENT_DESCRIPTION
 
 
 
-## AWS Code Deploy Workflow with Variable Information
-
-To deploy an application with AWS Code Deploy, the Wercker step follow this steps :
+## AWS Code Deploy Workflow with Detailed Variable Information
 
 #### Step 1: Checking Dependencies
 
