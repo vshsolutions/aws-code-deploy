@@ -7,54 +7,58 @@ set -o noglob
 # Set Colors
 #
 
-bold=$(tput bold)
-underline=$(tput sgr 0 1)
-reset=$(tput sgr0)
+bold="\e[1m"
+dim="\e[2m"
+underline="\e[4m"
+blink="\e[5m"
+reset="\e[0m"
+red="\e[31m"
+green="\e[32m"
+blue="\e[34m"
 
-red=$(tput setaf 1)
-green=$(tput setaf 2)
-white=$(tput setaf 7)
-tan=$(tput setaf 3)
-blue=$(tput setaf 4)
 
 #
-# Headers and Logging
+# Common Output Styles
 #
 
-underline() { printf "${underline}${bold}%s${reset}\n" "$@"
+h1() {
+  printf "\n${bold}${underline}%s${reset}\n" "$(echo "$@" | sed '/./,$!d')"
 }
-h1() { printf "\n${underline}${bold}${blue}%s${reset}\n" "$@"
+h2() { 
+  printf "\n${bold}%s${reset}\n" "$(echo "$@" | sed '/./,$!d')"
 }
-h2() { printf "\n${bold}%s${reset}\n" "$@"
+info() {
+  printf "${dim}➜ %s${reset}\n" "$(echo "$@" | sed '/./,$!d')"
 }
-debug() { printf "${white}%s${reset}\n" "$@"
+success() {
+  printf "${green}✔ %s${reset}\n" "$(echo "$@" | sed '/./,$!d')"
 }
-info() { printf "${white}➜ %s${reset}\n" "$@"
+error() {
+  printf "${red}${bold}✖ %s${reset}\n" "$(echo "$@" | sed '/./,$!d')"
 }
-success() { printf "${green}✔ %s${reset}\n" "$@"
+warnError() {
+  printf "${red}✖ %s${reset}\n" "$(echo "$@" | sed '/./,$!d')"
 }
-error() { printf "${red}✖ %s${reset}\n" "$@"
+warnNotice() {
+  printf "${blue}✖ %s${reset}\n" "$(echo "$@" | sed '/./,$!d')"
 }
-warn() { printf "${tan}➜ %s${reset}\n" "$@"
-}
-bold() { printf "${bold}%s${reset}\n" "$@"
-}
-note() { printf "\n${underline}${bold}${blue}Note:${reset} ${blue}%s${reset}\n" "$@"
+note() {
+  printf "\n${bold}${blue}Note:${reset} ${blue}%s${reset}\n" "$(echo "$@" | sed '/./,$!d')"
 }
 
 # Runs the specified command and logs it appropriately.
-# $1 = command
-# $2 = (optional) error message
-# $3 = (optional) success message
-# $4 = (optional) global variable to assign the output to
+#   $1 = command
+#   $2 = (optional) error message
+#   $3 = (optional) success message
+#   $4 = (optional) global variable to assign the output to
 runCommand() {
   command="$1"
   info "$1"
-  local output="$(eval $command 2>&1)" 
+  output="$(eval $command 2>&1)"
   ret_code=$?
 
   if [ $ret_code != 0 ]; then
-    warn "$output"
+    warnError "$output"
     if [ ! -z "$2" ]; then
       error "$2"
     fi
@@ -108,6 +112,7 @@ if [ -z "$AWS_CODE_DEPLOY_S3_BUCKET" ]; then
 fi
 
 
+
 # ----- Install AWS Cli -----
 # see documentation http://docs.aws.amazon.com/cli/latest/userguide/installing.html
 # ---------------------------
@@ -127,6 +132,7 @@ if ! typeExists "aws"; then
 else
   success "Depenencies met."
 fi
+
 
 
 # ----- Configure -----
@@ -149,6 +155,7 @@ if [ -n "$AWS_CODE_DEPLOY_REGION" ]; then
 fi
 
 
+
 # ----- Application -----
 # see documentation
 #    http://docs.aws.amazon.com/cli/latest/reference/deploy/get-application.html
@@ -160,14 +167,12 @@ APPLICATION_VERSION=${AWS_CODE_DEPLOY_APPLICATION_VERSION:-${GIT_COMMIT:0:7}}
 
 # Check application exists
 h1 "Step 3: Checking Application"
-h2 "Checking application \"$APPLICATION_NAME\" exists"
-
 APPLICATION_EXISTS="aws deploy get-application --application-name $APPLICATION_NAME"
 info "$APPLICATION_EXISTS"
 APPLICATION_EXISTS_OUTPUT=$($APPLICATION_EXISTS 2>&1)
 
 if [ $? -ne 0 ]; then
-  warn "$APPLICATION_EXISTS_OUTPUT"
+  warnNotice "$APPLICATION_EXISTS_OUTPUT"
   h2 "Creating application \"$APPLICATION_NAME\""
 
   # Create application
@@ -179,6 +184,7 @@ else
 fi
 
 
+
 # ----- Deployment Config (optional) -----
 # see documentation http://docs.aws.amazon.com/cli/latest/reference/deploy/create-deployment-config.html
 # ----------------------
@@ -187,14 +193,12 @@ MINIMUM_HEALTHY_HOSTS=${AWS_CODE_DEPLOY_MINIMUM_HEALTHY_HOSTS:-type=FLEET_PERCEN
 
 # Check deployment config exists
 h1 "Step 4: Checking Deployment Config"
-h2 "Checking deployment config \"$DEPLOYMENT_CONFIG_NAME\" exists"
-
 DEPLOYMENT_CONFIG_EXISTS="aws deploy get-deployment-config --deployment-config-name $DEPLOYMENT_CONFIG_NAME"
 info "$DEPLOYMENT_CONFIG_EXISTS"
 DEPLOYMENT_CONFIG_EXISTS_OUTPUT=$($DEPLOYMENT_CONFIG_EXISTS 2>&1)
 
 if [ $? -ne 0 ]; then
-  warn "$DEPLOYMENT_CONFIG_EXISTS_OUTPUT"
+  warnNotice "$DEPLOYMENT_CONFIG_EXISTS_OUTPUT"
   h2 "Creating deployment config \"$DEPLOYMENT_CONFIG_NAME\""
 
   # Create application
@@ -204,6 +208,7 @@ if [ $? -ne 0 ]; then
 else
   success "Deployment config \"$DEPLOYMENT_CONFIG_NAME\" already exists"
 fi
+
 
 
 # ----- Deployment Group -----
@@ -217,14 +222,12 @@ SERVICE_ROLE_ARN="$AWS_CODE_DEPLOY_SERVICE_ROLE_ARN"
 
 # Check deployment group exists
 h1 "Step 5: Checking Deployment Group"
-h2 "Checking deployment group \"$DEPLOYMENT_GROUP\" exists for application \"$APPLICATION_NAME\""
-
 DEPLOYMENT_GROUP_EXISTS="aws deploy get-deployment-group --application-name $APPLICATION_NAME --deployment-group-name $DEPLOYMENT_GROUP"
 info "$DEPLOYMENT_GROUP_EXISTS"
 DEPLOYMENT_GROUP_EXISTS_OUTPUT=$($DEPLOYMENT_GROUP_EXISTS 2>&1)
 
 if [ $? -ne 0 ]; then
-  warn "$DEPLOYMENT_GROUP_EXISTS_OUTPUT"
+  warnNotice "$DEPLOYMENT_GROUP_EXISTS_OUTPUT"
   h2 "Creating deployment group \"$DEPLOYMENT_GROUP\" for application \"$APPLICATION_NAME\""
 
   # Create deployment group
@@ -246,6 +249,7 @@ if [ $? -ne 0 ]; then
 else
   success "Deployment group \"$DEPLOYMENT_GROUP\" already exists for application \"$APPLICATION_NAME\""
 fi
+
 
 
 # ----- Compressing Source -----
@@ -274,6 +278,7 @@ DEPLOYMENT_COMPRESS_FILESIZE=$(ls -lah "${APP_LOCAL_TEMP_FILE}" | awk '{ print $
 success "Successfully compressed \"$APP_SOURCE\" ($DEPLOYMENT_COMPRESS_ORIG_DIR_SIZE) into \"$APP_LOCAL_FILE\" ($DEPLOYMENT_COMPRESS_FILESIZE)"
 
 
+
 # ----- Push Bundle to S3 -----
 # see documentation  http://docs.aws.amazon.com/cli/latest/reference/s3/cp.html
 # ----------------------
@@ -296,6 +301,7 @@ fi
 runCommand "$S3_CP \"$APP_LOCAL_TEMP_FILE\" \"s3://$S3_FULL_BUCKET/$APP_LOCAL_FILE\"" \
            "Copying bundle \"$APP_LOCAL_FILE\" to S3 failed" \
            "Copying bundle \"$APP_LOCAL_FILE\" to S3 succeeded"
+
 
 
 # ----- Limit Deploy Revisions per Bucket/Key  -----
@@ -344,6 +350,7 @@ else
 fi
 
 
+
 # ----- Register Revision -----
 # see documentation http://docs.aws.amazon.com/cli/latest/reference/deploy/register-application-revision.html
 # ----------------------
@@ -369,6 +376,7 @@ runCommand "$REGISTER_APP_CMD" \
            "Registering revision succeeded"
 
 
+
 # ----- Create Deployment -----
 # see documentation http://docs.aws.amazon.com/cli/latest/reference/deploy/create-deployment.html
 # ----------------------
@@ -389,7 +397,9 @@ runCommand "$DEPLOYMENT_CMD" \
            DEPLOYMENT_OUTPUT
 
 DEPLOYMENT_ID=$(echo $DEPLOYMENT_OUTPUT | jsonValue 'deploymentId' | tr -d ' ')
+success "Successfully created deployment: \"$DEPLOYMENT_ID\""
 note "You can follow your deployment at: https://console.aws.amazon.com/codedeploy/home#/deployments/$DEPLOYMENT_ID"
+
 
 
 # ----- Monitor Deployment -----
@@ -397,12 +407,6 @@ note "You can follow your deployment at: https://console.aws.amazon.com/codedepl
 # ----------------------
 if [ "true" = "$DEPLOYMENT_OVERVIEW" ]; then
   h1 "Deployment Overview"
-  
-  if ! typeExists "jshon"; then
-    h2 "Installing Monitoring Dependency: \"jshon\""
-    runCommand "sudo apt-get install -y jshon"
-    success "Installing jshon (Version: `jshon --version`) succeeded"
-  fi
   
   DEPLOYMENT_GET="aws deploy get-deployment --deployment-id \"$DEPLOYMENT_ID\""  
   h2 "Monitoring deployment \"$DEPLOYMENT_ID\" for \"$APPLICATION_NAME\" on deployment group $DEPLOYMENT_GROUP ..."
@@ -417,7 +421,7 @@ if [ "true" = "$DEPLOYMENT_OVERVIEW" ]; then
         error "Deployment of application \"$APPLICATION_NAME\" on deployment group \"$DEPLOYMENT_GROUP\" failed"
         exit 1
       fi
-      
+    
       # Deployment Overview
       IN_PROGRESS=$(echo "$DEPLOYMENT_GET_OUTPUT" | jsonValue "InProgress" | tr -d "\r\n ")
       PENDING=$(echo "$DEPLOYMENT_GET_OUTPUT" | jsonValue "Pending" | tr -d "\r\n ")
@@ -434,78 +438,106 @@ if [ "true" = "$DEPLOYMENT_OVERVIEW" ]; then
       # Deployment Status
       STATUS=$(echo "$DEPLOYMENT_GET_OUTPUT" | jsonValue "status" | tr -d "\r\n" | tr -d " ")
       ERROR_MESSAGE=$(echo "$DEPLOYMENT_GET_OUTPUT" | jsonValue "message")
-
-      printf "\r${bold}Status${reset}  | In Progress: $IN_PROGRESS | Pending: $PENDING  | Skipped: $SKIPPED  | Succeeded: $SUCCEEDED  | Failed: $FAILED  | "
+      
+      printf "\r${bold}${blink}Status${reset}  | In Progress: $IN_PROGRESS  | Pending: $PENDING  | Skipped: $SKIPPED  | Succeeded: $SUCCEEDED  | Failed: $FAILED  | "
 
       # Print Failed Details
       if [ "$STATUS" == "Failed" ]; then
-        printf "\n"
+        printf "\r${bold}Status${reset}  | In Progress: $IN_PROGRESS  | Pending: $PENDING  | Skipped: $SKIPPED  | Succeeded: $SUCCEEDED  | Failed: $FAILED  |\n"
         error "Deployment failed: $ERROR_MESSAGE"
           
-        # Retrieve failed instances
+        # Retrieve failed instances. Use text output here to easier retrieve array. Output format:
+        # INSTANCESLIST   i-1497a9e2
+        # INSTANCESLIST   i-23a541eb
         LIST_INSTANCES_OUTPUT=""
         h2 "Retrieving failed instance details ..."
-        runCommand "aws deploy list-deployment-instances --deployment-id $DEPLOYMENT_ID --instance-status-filter Failed" \
+        runCommand "aws deploy list-deployment-instances --deployment-id $DEPLOYMENT_ID --instance-status-filter Failed --output text" \
                    "" \
                    "" \
                    LIST_INSTANCES_OUTPUT
-                     
-        INSTANCE_IDS=($(echo $LIST_INSTANCES_OUTPUT | jshon -e instancesList | tr -d '",[] '))
-        success "Found ${#INSTANCE_IDS[@]} failed instance(s) [ ${INSTANCE_IDS[@]} ]"
-          
+                   
+        INSTANCE_IDS=($(echo "$LIST_INSTANCES_OUTPUT" | sed -r 's/INSTANCESLIST\s+//g'))
+        INSTANCE_IDS_JOINED=$(printf ", %s" "${INSTANCE_IDS[@]}")
+        success "Found ${#INSTANCE_IDS[@]} failed instance(s) [ ${INSTANCE_IDS_JOINED:2} ]"
+        
         # Enumerate over each failed instance
         for i in "${!INSTANCE_IDS[@]}"; do
-          FAILED_INSTANCE_OUTPUT=$(aws deploy get-deployment-instance --deployment-id $DEPLOYMENT_ID --instance-id ${INSTANCE_IDS[$i]})
-            
-          I_ID=$(echo $FAILED_INSTANCE_OUTPUT | jshon -e instanceSummary -e instanceId | tr -d '"' | sed 's/\\\//\//g')
-          I_STATUS=$(echo $FAILED_INSTANCE_OUTPUT | jshon -e instanceSummary -e status | tr -d '"')
-          I_LAST_UPDATED=$(echo $FAILED_INSTANCE_OUTPUT | jshon -e instanceSummary -e lastUpdatedAt | tr -d '"')
-          EVENT_NAMES=($(echo $FAILED_INSTANCE_OUTPUT | jshon -e instanceSummary -e lifecycleEvents -a -e lifecycleEventName | tr -d '"'))
-          
+          FAILED_INSTANCE_OUTPUT=$(aws deploy get-deployment-instance --deployment-id $DEPLOYMENT_ID --instance-id ${INSTANCE_IDS[$i]} --output text)
           printf "\n${bold}Instance: ${INSTANCE_IDS[$i]}${reset}\n"
-          printf "    Instance ID:  %s\n" "$I_ID"
-          printf "         Status:  %s\n" "$I_STATUS"
-          printf "Last Updated At:  %s\n\n" "$(date -d @$I_LAST_UPDATED)"
+          
+          echo "$FAILED_INSTANCE_OUTPUT" | while read -r line; do
+           
+            case "$(echo $line | awk '{ print $1; }')" in
             
-          for i in "${!EVENT_NAMES[@]}"; do
-            E_STATUS=$(echo $FAILED_INSTANCE_OUTPUT | jshon -e instanceSummary -e lifecycleEvents -e $i -e status | tr -d '"')
-    
-            case "$E_STATUS" in
-              Failed)
-                I_E_ERR_CODE=$(echo $FAILED_INSTANCE_OUTPUT | jshon -e instanceSummary -e lifecycleEvents -e $i -e diagnostics -e errorCode | tr -d '"')
-                I_E_SCRIPT_NAME=$(echo $FAILED_INSTANCE_OUTPUT | jshon -e instanceSummary -e lifecycleEvents -e $i -e diagnostics -e scriptName | tr -d '"' | sed 's/\\\//\//g')
-                I_MESSAGE=$(echo $FAILED_INSTANCE_OUTPUT | jshon -e instanceSummary -e lifecycleEvents -e $i -e diagnostics -e message | tr -d '"' | sed 's/\\\//\//g')
-                I_E_LOG_TAIL=$(echo $FAILED_INSTANCE_OUTPUT | jshon -e instanceSummary -e lifecycleEvents -e $i -e diagnostics -e logTail | tr -d '"' | sed 's/\\\//\//g')
+              INSTANCESUMMARY)
+                
+                printf "    Instance ID:  %s\n" "$(echo $line | awk '{ print $3; }')"
+                printf "         Status:  %s\n" "$(echo $line | awk '{ print $5; }')"
+                printf "Last Updated At:  %s\n\n" "$(date -d @$(echo $line | awk '{ print $4; }'))"
+                ;;
+
+              # The text version should have either 3 or 5 arguments
+              # LIFECYCLEEVENTS            ValidateService         Skipped
+              # LIFECYCLEEVENTS    1434231363.6    BeforeInstall   1434231363.49   Failed
+              # LIFECYCLEEVENTS    1434231361.79   DownloadBundle  1434231361.34   Succeeded
+              LIFECYCLEEVENTS)
+                # For now, lets just strip off start/stop times. Also convert tabs to spaces
+                lineModified=$(echo "$line" | sed -r 's/[0-9]+\.[0-9]+//g' | sed 's/\t/    /g')
+               
+                # Bugfix: Ubuntu 12.04 has some weird issues with spacing as seen on CircleCI. We fix this
+                # by just condensing down to single spaces and ensuring the proper separator.
+                IFS=$' '
+                ARGS=($(echo "$lineModified" | sed -r 's/\s+/ /g'))
+                
+                if [ ${#ARGS[@]} == 3 ]; then
+                  case "${ARGS[2]}" in
+                    Succeeded)
+                      printf "${bold}${green}✔ [%s]${reset}\t%s\n" "${ARGS[2]}" "${ARGS[1]}"
+                      ;;
+                  
+                    Skipped)
+                      printf "${bold}  [%s]${reset}\t%s\n" "${ARGS[2]}" "${ARGS[1]}"
+                      ;;
+                      
+                    Failed)
+                      printf "${bold}${red}✖ [%s]${reset}\t%s\n" "${ARGS[2]}" "${ARGS[1]}"
+                      ;;
+                  esac
+                  
+                else
+                  echo "[UNKNOWN] (${#ARGS[@]}) $lineModified"
+                fi
+                ;;
               
-                printf "${bold}${red}%s${reset}\t%s\n" "[$E_STATUS]" "${EVENT_NAMES[$i]}"
-                printf "    ${red}%s:\t\t%s${reset}\n" "Error Code" "$I_E_ERR_CODE"
-                printf "    ${red}%s:\t%s${reset}\n" "Script Name" "$I_E_SCRIPT_NAME"
-                printf "    ${red}%s:\t\t%s${reset}\n" "Message" "$I_MESSAGE"
-                printf "${red}=== Log Tail =================================\n%b\n" "$I_E_LOG_TAIL"
-                printf "${red}==============================================${reset}\n"
+              DIAGNOSTICS)
+                # Skip diagnostics if we have "DIAGNOSTICS      Success         Succeeded"
+                if [ "$(echo $line | awk '{ print $2; }')" == "Success" ] && [ "$(echo $line | awk '{ print $3; }')" == "Succeeded" ]; then
+                  continue
+                fi
+                
+                # Attempt to get error message
+                ERROR_CODE=$(echo $line | sed -r 's/DIAGNOSTICS//g' | sed -r 's/LifecycleEvent\s-\s[a-zA-Z]+//g')
+                printf " ${red}  Error Code:  %s${reset}\n" $ERROR_CODE
+                printf " ${red}   Error Log:${reset}\n"
+                ;; 
+              
+              *)
+                printf "${red}${line}${reset}\n"
                 ;;
-                  
-              Succeeded)
-                printf "${bold}${green}%s${reset}\t%s\n" "[$E_STATUS]" "${EVENT_NAMES[$i]}"
-                ;;
-                  
-              Skipped)
-                printf "${bold}%s${reset}\t%s\n" "[$E_STATUS]" "${EVENT_NAMES[$i]}"
                 
             esac
 
-          done
-          # ~ end: instance-events
-          
-        done
-        # ~ end: instance
+          done # end: while
         
+        done # ~ end: instance
+        
+        printf "\n\n"
         exit 1
       fi
       
       # Deployment succeeded
       if [ "$STATUS" == "Succeeded" ]; then
-         printf "\n"
+         printf "\r${bold}Status${reset}  | In Progress: $IN_PROGRESS  | Pending: $PENDING  | Skipped: $SKIPPED  | Succeeded: $SUCCEEDED  | Failed: $FAILED  |\n"
          success "Deployment of application \"$APPLICATION_NAME\" on deployment group \"$DEPLOYMENT_GROUP\" succeeded"
          break
       fi
