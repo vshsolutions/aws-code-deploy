@@ -109,7 +109,13 @@ Environment Variables:
 
 * `AWS_CODE_DEPLOY_DEPLOYMENT_GROUP_NAME` (required): Deployment group name
 * `AWS_CODE_DEPLOY_SERVICE_ROLE_ARN` (required): Service role arn giving permissions to use Code Deploy when creating a deployment group
-* `AWS_CODE_DEPLOY_EC2_TAG_FILTERS` (optional): EC2 tags to filter on when creating a deployment group
+* `AWS_CODE_DEPLOY_EC2_TAG_FILTERS` (optional): EC2 tags to filter on when creating a deployment group. Specify as a string with the following comma separated keys:
+    * **Key** *string*
+    * **Value** *string*
+    * **Type** *string* - Either: `KEY_ONLY` or `VALUE_ONLY` or `KEY_AND_VALUE`
+    
+    For example: `AWS_CODE_DEPLOY_EC2_TAG_FILTERS="Key=Type,Value=www,Type=KEY_AND_VALUE"`
+
 * `AWS_CODE_DEPLOY_AUTO_SCALING_GROUPS` (optional): Auto Scaling groups when creating a deployment group
 
 #### Step 6: Compressing Source
