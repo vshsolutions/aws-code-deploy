@@ -64,6 +64,9 @@ AWS_CODE_DEPLOY_DEPLOYMENT_DESCRIPTION
 ### Manual
 
 
+## IAM Requirements
+
+
 ## AWS Code Deploy Workflow with Detailed Variable Information
 
 #### Step 1: Checking Dependencies
@@ -145,7 +148,13 @@ AWS_CODE_DEPLOY_S3_FILENAME="100#c3a5fea.zip"
 
 #### Step 8: Limiting Deploy Revisions per Bucket/Key
 
-This step ensures that applications with high revision/commit volume with unique filenames can remove old revisions to help limit the size of the container. Large teams can quickly fill S3 with multiple TBs/day depending on the projects. Since deployments typically don't need to store that many versions backwards, this step will ensure that only N revisions exist, removing oldest revisions upon deploy.
+This step ensures that applications with high revision/commit volume with unique filenames can remove
+old revisions to help limit the size of the container. Large teams can quickly fill S3 with multiple
+TBs/day depending on the projects. Since deployments typically don't need to store that many versions
+backwards, this step will ensure that only N revisions exist, removing oldest revisions upon deploy.
+
+> Note: If a limit is specified, the `ListObjects` IAM permission will need to be granted for the 
+specific s3://bucket/(key).
 
 Environment Variables:
 
