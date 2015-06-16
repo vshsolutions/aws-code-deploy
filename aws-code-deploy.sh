@@ -86,15 +86,6 @@ jsonValue() {
 }
 
 # Check variables
-if [ -z "$AWS_CODE_DEPLOY_KEY" ]; then
-  error "Please set the \"\$AWS_CODE_DEPLOY_KEY\" variable"
-  exit 1
-fi
-
-if [ -z "$AWS_CODE_DEPLOY_SECRET" ]; then
-  error "Please set the \"\$AWS_CODE_DEPLOY_SECRET\" variable"
-  exit 1
-fi
 
 if [ -z "$AWS_CODE_DEPLOY_APPLICATION_NAME" ]; then
   error "Please set the \"\$AWS_CODE_DEPLOY_APPLICATION_NAME\" variable"
@@ -130,7 +121,7 @@ if ! typeExists "aws"; then
   runCommand "sudo pip install awscli"
   success "Installing AWS CLI (`aws --version`) succeeded"
 else
-  success "Dependencies met."
+  success "Depenencies met."
 fi
 
 
@@ -141,17 +132,47 @@ fi
 # ----------------------
 
 h1 "Step 2: Configuring AWS"
-h2 "Configuring AWS Access Key ID"
-CONFIGURE_KEY_OUTPUT=$(aws configure set aws_access_key_id $AWS_CODE_DEPLOY_KEY 2>&1)
-success "Configuring AWS Access Key ID succeeded"
-h2 "Configuring AWS Secret Access Key"
-CONFIGURE_SECRET_OUTPUT=$(aws configure set aws_secret_access_key $AWS_CODE_DEPLOY_SECRET 2>&1)
-success "Configuring AWS Secret Access Key succeeded"
+if [ -z "$AWS_CODE_DEPLOY_KEY" ]; then
+  if [ ! -e ~/.aws/config ]; then
+    error "Please configure AWS credentials or explicitly set the \"\$AWS_CODE_DEPLOY_KEY\" variable"
+    exit 1    
+  fi
+  if [ $(grep aws_access_key_id ~/.aws/config | wc -l) -lt 1 ]; then
+    error "Unable to find \"aws_access_key_id\" in ~/.aws/config. Please configure AWS credentials or explicitly set the \"\$AWS_CODE_DEPLOY_KEY\" variable"
+    exit 1  
+  fi
+  success "AWS Access Key already configured."
+else
+  CONFIGURE_KEY_OUTPUT=$(aws configure set aws_access_key_id $AWS_CODE_DEPLOY_KEY 2>&1)
+  success "Successfully configured AWS Access Key ID."
+fi
 
-if [ -n "$AWS_CODE_DEPLOY_REGION" ]; then
-  h2 "Configuring AWS default region"
+if [ -z "$AWS_CODE_DEPLOY_SECRET" ]; then
+  if [ ! -e ~/.aws/config ]; then
+    error "Please configure AWS credentials or explicitly set the \"\$AWS_CODE_DEPLOY_SECRET\" variable"
+    exit 1    
+  fi
+  if [ $(grep aws_secret_access_key ~/.aws/config | wc -l) -lt 1 ]; then
+    error "Unable to find \"aws_secret_access_key\" in ~/.aws/config. Please configure AWS credentials or explicitly set the \"\$AWS_CODE_DEPLOY_SECRET\" variable"
+    exit 1  
+  fi
+  success "AWS Secret Access Key already configured."
+else
+  CONFIGURE_KEY_OUTPUT=$(aws configure set aws_secret_access_key $AWS_CODE_DEPLOY_SECRET 2>&1)
+  success "Successfully configured AWS Secret Access Key ID."
+fi
+
+if [ -z "$AWS_CODE_DEPLOY_REGION" ]; then
+  if [ -e ~/.aws/config ]; then
+    if [ $(grep region ~/.aws/config | wc -l) -lt 1 ]; then
+      warnNotice "Unable to configure AWS region."
+    else
+      success "AWS Region already configured."
+    fi
+  fi
+else
   CONFIGURE_REGION_OUTPUT=$(aws configure set default.region $AWS_CODE_DEPLOY_REGION 2>&1)
-  success "Configuring AWS default region succeeded"
+  success "Successfully configured AWS default region."
 fi
 
 
@@ -381,8 +402,6 @@ runCommand "$REGISTER_APP_CMD" \
 # see documentation http://docs.aws.amazon.com/cli/latest/reference/deploy/create-deployment.html
 # ----------------------
 DEPLOYMENT_DESCRIPTION="$AWS_CODE_DEPLOY_DEPLOYMENT_DESCRIPTION"
-DEPLOYMENT_OVERVIEW=${AWS_CODE_DEPLOY_DEPLOYMENT_OVERVIEW:-true}
-
 h1 "Step 10: Creating Deployment"
 DEPLOYMENT_CMD="aws deploy create-deployment --application-name $APPLICATION_NAME --deployment-config-name $DEPLOYMENT_CONFIG_NAME --deployment-group-name $DEPLOYMENT_GROUP --s3-location $S3_LOCATION"
 
@@ -405,6 +424,7 @@ note "You can follow your deployment at: https://console.aws.amazon.com/codedepl
 # ----- Monitor Deployment -----
 # see documentation http://docs.aws.amazon.com/cli/latest/reference/deploy/create-deployment.html
 # ----------------------
+DEPLOYMENT_OVERVIEW=${AWS_CODE_DEPLOY_DEPLOYMENT_OVERVIEW:-true}
 if [ "true" = "$DEPLOYMENT_OVERVIEW" ]; then
   h1 "Deployment Overview"
   
@@ -515,10 +535,8 @@ if [ "true" = "$DEPLOYMENT_OVERVIEW" ]; then
                   continue
                 fi
                 
-                # Attempt to get error message
-                ERROR_CODE=$(echo $line | sed -r 's/DIAGNOSTICS//g' | sed -r 's/LifecycleEvent\s-\s[a-zA-Z]+//g')
-                printf " ${red}  Error Code:  %s${reset}\n" $ERROR_CODE
-                printf " ${red}   Error Log:${reset}\n"
+                # Just pipe off the DIAGNOSTICS
+                printf "${red}%s${reset}\n" "$(echo $line | sed -r 's/^DIAGNOSTICS\s*//g')"
                 ;; 
               
               *)

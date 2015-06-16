@@ -74,7 +74,7 @@ The following executables are installed:
 
 #### Step 2: [Configuring AWS](http://docs.aws.amazon.com/cli/latest/reference/configure/index.html)
 
-This step ensures that configuration parameters for AWS cli are properly set.
+This step ensures that configuration parameters for AWS CLI are properly set.
 
 Environment Variables:
 
