@@ -123,7 +123,7 @@ if ! typeExists "aws"; then
 else
   if [[ "${CIRCLECI}" == "true" && "${CI}" == "true" ]]; then
     echo "Installing updated awscli version ..."
-    sudo -H pip install awscli --upgrade
+    runCommand "sudo -H pip install awscli --quiet --upgrade"
   else
     success "Depenencies met."  
   fi
@@ -325,8 +325,8 @@ if [ "$AWS_CODE_DEPLOY_S3_SSE" == "true" ]; then
 fi
 
 runCommand "$S3_CP \"$APP_LOCAL_TEMP_FILE\" \"s3://$S3_FULL_BUCKET/$APP_LOCAL_FILE\"" \
-           "Copying bundle \"$APP_LOCAL_FILE\" to S3 failed" \
-           "Copying bundle \"$APP_LOCAL_FILE\" to S3 succeeded"
+           "Unable to copy bundle \"$APP_LOCAL_FILE\" to S3" \
+           "Successfully copied bundle \"$APP_LOCAL_FILE\" to S3"
 
 
 
