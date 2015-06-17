@@ -25,7 +25,7 @@ the [AWS CLI API](http://docs.aws.amazon.com/cli/latest/reference/deploy/index.h
             "techpivot/aws-code-deploy": "dev-master"
         }
         ```
-  * The file can then be executed from the /vendor/bin directory: `bash ./vendor/bin/aws-code-deploy.sh`
+  * The file can then be executed from the /vendor/bin directory: `bash vendor/bin/aws-code-deploy.sh`
 
 2. Git Submodule
 
@@ -59,6 +59,41 @@ AWS_CODE_DEPLOY_DEPLOYMENT_DESCRIPTION
 
 ### CircleCI
 
+**circle.yml**
+```
+machine:
+
+  environment:
+    DEPLOY_DIR: $HOME/deploy
+    
+    # We are defining the $AWS_CODE_DEPLOY_KEY and $AWS_CODE_DEPLOY_SECRET in the CircleCI Project Settings >
+    # AWS Permissions which automatically configure these for use via aws cli and are automatically read
+    # via aws-code-deploy.sh. Alternatively, these could be specified securely (not via project code) using 
+    # the CircleCI Environment Variables CircleCI control panel.
+    AWS_CODE_DEPLOY_REGION: us-west-2
+    AWS_CODE_DEPLOY_APPLICATION_NAME: "Company Website"
+    AWS_CODE_DEPLOY_DEPLOYMENT_CONFIG_NAME: CodeDeployDefault.AllAtOnce
+    AWS_CODE_DEPLOY_DEPLOYMENT_GROUP_NAME: "www.my-company.com"
+    AWS_CODE_DEPLOY_SERVICE_ROLE_ARN: "arn:aws:iam::XXXXXXXXXXXXX:role/my-company-codedeploy"
+    AWS_CODE_DEPLOY_EC2_TAG_FILTERS: "Key=Type,Value=www,Type=KEY_AND_VALUE"
+    AWS_CODE_DEPLOY_APP_SOURCE: $HOME/deploy
+    AWS_CODE_DEPLOY_S3_FILENAME: "${CIRCLE_BUILD_NUM}#${CIRCLE_SHA1:0:7}.zip"
+    AWS_CODE_DEPLOY_S3_BUCKET: my-company-codedeploy-us-west-2
+    AWS_CODE_DEPLOY_S3_KEY_PREFIX: /www
+    AWS_CODE_DEPLOY_S3_LIMIT_BUCKET_FILES: 10
+    AWS_CODE_DEPLOY_S3_SSE: true
+    AWS_CODE_DEPLOY_REVISION_DESCRIPTION: "${CIRCLE_BRANCH} (#${CIRCLE_SHA1:0:7})"
+    AWS_CODE_DEPLOY_DEPLOYMENT_DESCRIPTION: "Deployed via CircleCI on $(date)"
+
+# ...
+
+deployment:
+  production:
+    branch: master
+    commands:
+      - bash vendor/bin/aws-code-deploy.sh
+```
+    
 ### TravisCI
 
 ### Manual
@@ -66,8 +101,88 @@ AWS_CODE_DEPLOY_DEPLOYMENT_DESCRIPTION
 
 ## IAM Requirements
 
+In order for the script to execute successfully, the specified AWS credentials must be granted the required 
+IAM privileges for the corresponding actions. Since various steps of this script are optional it allows for
+flexibility in creating policies that apply the principle of least privilege. Two common examples are described 
+below. In general, the script needs access to the following (depending on parameters):
 
-## AWS Code Deploy Workflow with Detailed Variable Information
+  1. Code Deploy - Verifying Application, Creating Application, Creating Revisions
+  2. Code Deploy Deployment - Creating Deployment, Creating Deployment Group, Listing Instances
+  3. S3 - Uploading bundle to S3, Deleting Old Revisions
+  
+
+#### Wildcard Access
+This may be best for first time users with 
+
+
+#### Explicit Access with Full Functionality
+  * 
+```
+{
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+            "Effect": "Allow",
+            "Action": [
+                "codedeploy:CreateApplication",
+                "codedeploy:GetApplication",
+                "codedeploy:GetApplicationRevision",
+                "codedeploy:RegisterApplicationRevision"
+            ],
+            "Resource": [
+                "arn:aws:codedeploy:us-west-2:XXXXXXXXXXXX:application:TechPivot"
+            ]
+        },
+        {
+            "Effect": "Allow",
+            "Action": [
+                "codedeploy:CreateDeployment",
+                "codedeploy:GetDeployment",
+                "codedeploy:GetDeploymentGroup",
+                "codedeploy:GetDeploymentInstance",
+                "codedeploy:ListDeploymentInstances"
+            ],
+            "Resource": [
+                "arn:aws:codedeploy:us-west-2:XXXXXXXXXXXX:deploymentgroup:TechPivot/*"
+            ]
+        },
+        {
+            "Effect": "Allow",
+            "Action": [
+                "codedeploy:GetDeploymentConfig"
+            ],
+            "Resource": [
+                "arn:aws:codedeploy:us-west-2:XXXXXXXXXXXX:deploymentconfig:CodeDeployDefault.OneAtATime",
+                "arn:aws:codedeploy:us-west-2:XXXXXXXXXXXX:deploymentconfig:CodeDeployDefault.HalfAtATime",
+                "arn:aws:codedeploy:us-west-2:XXXXXXXXXXXX:deploymentconfig:CodeDeployDefault.AllAtOnce"
+            ]
+        },
+        {
+            "Effect": "Allow",
+            "Action": [
+                "s3:DeleteObject",
+                "s3:GetObject",
+                "s3:PutObject"
+            ],
+            "Resource": [
+                "arn:aws:s3:::techpivot-codedeploy-us-west-2/*"
+            ]
+        },
+        {
+            "Effect": "Allow",
+            "Action": [
+                "s3:ListBucket",
+                "s3:ListObjects"
+            ],
+            "Resource": [
+                "arn:aws:s3:::techpivot-codedeploy-us-west-2"
+            ]
+        }
+    ]
+}
+```
+
+## Detailed Workflow & Variable Information
 
 #### Step 1: Checking Dependencies
 
@@ -102,6 +217,7 @@ Environment Variables:
 * `AWS_CODE_DEPLOY_DEPLOYMENT_CONFIG_NAME` (optional): Deployment config name. By default: _CodeDeployDefault.OneAtATime_. Built-in options:
     * CodeDeployDefault.OneAtATime
     * CodeDeployDefault.AllAtOnce
+    * CodeDeployDefault.HalfAtATime
 * `AWS_CODE_DEPLOY_MINIMUM_HEALTHY_HOSTS` (optional): The minimum number of healthy instances during deployment. By default: _type=FLEET_PERCENT,value=75_
 
 #### Step 5: [Deployment Group](http://docs.aws.amazon.com/cli/latest/reference/deploy/create-deployment-group.html)
@@ -137,14 +253,17 @@ This step consists to push the application to S3.
 Environment Variables:
 
 * `AWS_CODE_DEPLOY_S3_BUCKET` (required): The name of the S3 bucket to deploy the revision
-* `AWS_CODE_DEPLOY_S3_KEY_PREFIX` (optional): A prefix to use for the file key. It's highly recommended to structure a bucket with a prefix per deployment group. This allows to limit stored revisions per deployment group. Note: A leading or trailing slash is not required.  For example:
-```
-AWS_CODE_DEPLOY_S3_BUCKET="my-bucket-test"
-AWS_CODE_DEPLOY_S3_KEY_PREFIX="production-www"
-AWS_CODE_DEPLOY_S3_FILENAME="100#c3a5fea.zip"
+* `AWS_CODE_DEPLOY_S3_KEY_PREFIX` (optional): A prefix to use for the file key. It's highly recommended to structure a bucket with a prefix per deployment group. This allows to limit stored revisions per deployment group. Note: A leading or trailing slash is not required.  
 
-# The resulting stored file would exist at s3://my-bucket-test/production-www/100#c3a5fea.zip
-```
+  For example:
+
+  ```
+  AWS_CODE_DEPLOY_S3_BUCKET="my-bucket-test"
+  AWS_CODE_DEPLOY_S3_KEY_PREFIX="production-www"
+  AWS_CODE_DEPLOY_S3_FILENAME="100#c3a5fea.zip"
+
+  # The resulting stored file would exist at s3://my-bucket-test/production-www/100#c3a5fea.zip
+  ```
 
 #### Step 8: Limiting Deploy Revisions per Bucket/Key
 
@@ -153,12 +272,16 @@ old revisions to help limit the size of the container. Large teams can quickly f
 TBs/day depending on the projects. Since deployments typically don't need to store that many versions
 backwards, this step will ensure that only N revisions exist, removing oldest revisions upon deploy.
 
-> Note: If a limit is specified, the `ListObjects` IAM permission will need to be granted for the 
+> Note: If a limit is specified, the IAM permissions described below will need to be granted for the 
 specific s3://bucket/(key).
 
 Environment Variables:
-
 * `AWS_CODE_DEPLOY_S3_LIMIT_BUCKET_FILES` (optional): Number of revisions to limit. If 0, unlimited. By default: 0
+
+Required IAM Access:
+* Wildcard: `s3:DeleteObject`, `s3:GetObject`
+* Bucket Policy: `s3:ListBucket`, `s3:ListObjects`
+
 
 #### Step 9: [Registering Revision](http://docs.aws.amazon.com/cli/latest/reference/deploy/register-application-revision.html)
 
