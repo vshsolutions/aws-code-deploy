@@ -137,6 +137,7 @@ This may be best for first time users with
             "Effect": "Allow",
             "Action": [
                 "codedeploy:CreateDeployment",
+                "codedeploy:CreateDeploymentGroup",
                 "codedeploy:GetDeployment",
                 "codedeploy:GetDeploymentGroup",
                 "codedeploy:GetDeploymentInstance",
@@ -236,6 +237,12 @@ Environment Variables:
     For example: `AWS_CODE_DEPLOY_EC2_TAG_FILTERS="Key=Type,Value=www,Type=KEY_AND_VALUE"`
 
 * `AWS_CODE_DEPLOY_AUTO_SCALING_GROUPS` (optional): Auto Scaling groups when creating a deployment group
+
+Required IAM Access:
+```
+    "codedeploy:CreateDeploymentGroup",
+    "codedeploy:GetDeploymentGroup"
+```
 
 #### Step 6: Compressing Source
 
