@@ -119,9 +119,9 @@ if ! typeExists "aws"; then
   
   h2 "Installing AWS CLI"
   runCommand "sudo pip install awscli"
-  success "Installing AWS CLI (`aws --version`) succeeded"
+  success "Installing AWS CLI $(aws --version 2>&1) succeeded"
 else
-  success "Dependencies met (aws: `aws --version`)."  
+  success "Dependencies met (aws: $(aws --version 2>&1))."
 fi
 
 
