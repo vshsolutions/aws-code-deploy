@@ -121,12 +121,7 @@ if ! typeExists "aws"; then
   runCommand "sudo pip install awscli"
   success "Installing AWS CLI (`aws --version`) succeeded"
 else
-  if [[ "${CIRCLECI}" == "true" && "${CI}" == "true" ]]; then
-    echo "Installing updated AWS cli version ..."
-    runCommand "sudo -H pip install awscli --quiet --upgrade" "" "AWS cli successfully updated"
-  else
-    success "Depenencies met."  
-  fi
+  success "Dependencies met (aws: `aws --version`)."  
 fi
 
 
