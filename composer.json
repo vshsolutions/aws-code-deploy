@@ -7,5 +7,5 @@
         "AWS",
         "Code Deploy"
     ],
-    "bin": ["aws-code-deploy.sh"]
+    "bin": ["bin/aws-code-deploy.sh"]
 }
