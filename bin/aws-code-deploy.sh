@@ -317,7 +317,7 @@ if [ ! -z "$S3_KEY_PREFIX" ]; then
 fi
 
 if [ "$AWS_CODE_DEPLOY_S3_SSE" == "true" ]; then
-  S3_CP="$S3_CP --sse"
+  S3_CP="$S3_CP --sse AES256"
 fi
 
 runCommand "$S3_CP \"$APP_LOCAL_TEMP_FILE\" \"s3://$S3_FULL_BUCKET/$APP_LOCAL_FILE\"" \
