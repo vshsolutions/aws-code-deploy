@@ -86,6 +86,50 @@ jsonValue() {
   awk -F"[,:}]" '{for(i=1;i<=NF;i++){if($i~/'$key'\042/){print $(i+1)}}}' | tr -d '"' | sed -n ${num}p
 }
 
+installAwsCli() {
+  if ! typeExists "pip"; then
+    h2 "Installing Python PIP"
+    runCommand "sudo apt-get install -y python-pip"
+    success "Installing PIP (`pip --version`) succeeded"
+  fi
+  
+  h2 "Installing AWS CLI"
+  runCommand "sudo pip install awscli"
+}
+
+vercomp() {
+  if [[ $1 == $2 ]]
+  then
+    return 0
+  fi
+  local IFS=.
+  local i ver1=($1) ver2=($2)
+  
+  # fill empty fields in ver1 with zeros
+  for ((i=${#ver1[@]}; i<${#ver2[@]}; i++))
+  do
+    ver1[i]=0
+  done
+  
+  for ((i=0; i<${#ver1[@]}; i++))
+  do
+    if [[ -z ${ver2[i]} ]]
+    then
+      # fill empty fields in ver2 with zeros
+      ver2[i]=0
+    fi
+    if ((10#${ver1[i]} > 10#${ver2[i]}))
+    then
+      return 1
+    fi
+    if ((10#${ver1[i]} < 10#${ver2[i]}))
+    then
+      return 2
+    fi
+  done
+  return 0
+}
+
 # Check variables
 
 if [ -z "$AWS_CODE_DEPLOY_APPLICATION_NAME" ]; then
@@ -111,18 +155,21 @@ fi
 
 # Check AWS is installed
 h1 "Step 1: Checking Dependencies"
+
 if ! typeExists "aws"; then
-  if ! typeExists "pip"; then
-    h2 "Installing Python PIP"
-    runCommand "sudo apt-get install -y python-pip"
-    success "Installing PIP (`pip --version`) succeeded"
-  fi
-  
-  h2 "Installing AWS CLI"
-  runCommand "sudo pip install awscli"
+  installAwsCli
   success "Installing AWS CLI $(aws --version 2>&1) succeeded"
 else
-  success "Dependencies met (aws: $(aws --version 2>&1))."
+  # aws-cli 1.9.8 is required for proper SSE syntax
+  AWS_FULL_VER=$(aws --version 2>&1)
+  AWS_VER=$(echo $AWS_FULL_VER | sed -e 's/aws-cli\///' | sed -e 's/ Python.*//') 
+  vercomp $AWS_VER "1.9.8"
+  if [[ $? == 2 ]]; then
+    h2 "Installing updated AWS CLI version ($AWS_VER < 1.9.8)"
+    installAwsCli
+  fi 
+  
+  success "Dependencies met $(aws --version 2>&1)"
 fi
 
 
