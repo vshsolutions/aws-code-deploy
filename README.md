@@ -27,7 +27,7 @@ the [AWS CLI API](http://docs.aws.amazon.com/cli/latest/reference/deploy/index.h
 
        ```json
        "require-dev" : {
-            "techpivot/aws-code-deploy": "dev-master"
+            "techpivot/aws-code-deploy": "~1.0"
         }
         ```
   * The file can then be executed from the /vendor/bin directory: `bash vendor/bin/aws-code-deploy.sh`
