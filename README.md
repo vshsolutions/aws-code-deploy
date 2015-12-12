@@ -20,18 +20,6 @@ the [AWS CLI API](http://docs.aws.amazon.com/cli/latest/reference/deploy/index.h
  * Ubuntu 14.04
 
 
-## How to Include In Your Project
-
-1. Via Composer (For PHP Projects)
-  * Include in `composer.json` as follows:
-
-       ```json
-       "require-dev" : {
-            "techpivot/aws-code-deploy": "~1.0"
-        }
-        ```
-  * The file can then be executed from the /vendor/bin directory: `bash vendor/bin/aws-code-deploy.sh`
-
 ## Sample Output
 
 ```bash
@@ -92,6 +80,19 @@ Monitoring deployment "d-CDR1HA75C" for "TechPivot" on deployment group www.tech
 Status  | In Progress: 0  | Pending: 0  | Skipped: 0  | Succeeded: 1  | Failed: 0  |
 ✔ Deployment of application "TechPivot" on deployment group "www.techpivot.net" succeeded
 ```
+
+
+## How to Include In Your Project
+
+1. Via Composer (For PHP Projects)
+  * Include in `composer.json` as follows:
+
+       ```json
+       "require-dev" : {
+            "techpivot/aws-code-deploy": "~1.0"
+        }
+        ```
+  * The file can then be executed from the /vendor/bin directory: `bash vendor/bin/aws-code-deploy.sh`
 
 
 ## Variables
