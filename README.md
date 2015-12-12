@@ -32,9 +32,66 @@ the [AWS CLI API](http://docs.aws.amazon.com/cli/latest/reference/deploy/index.h
         ```
   * The file can then be executed from the /vendor/bin directory: `bash vendor/bin/aws-code-deploy.sh`
 
-2. Git Submodule
+## Sample Output
 
-3. Git Subtree
+```bash
+
+Step 1: Checking Dependencies
+✔ Dependencies met (aws: aws-cli/1.8.12 Python/2.7.6 Linux/3.14.28-031428-generic).
+
+Step 2: Configuring AWS
+✔ AWS Access Key already configured.
+✔ AWS Secret Access Key already configured.
+✔ Successfully configured AWS default region.
+
+Step 3: Checking Application
+➜ aws deploy get-application --application-name TechPivot
+✔ Application "TechPivot" already exists
+
+Step 4: Checking Deployment Config
+➜ aws deploy get-deployment-config --deployment-config-name CodeDeployDefault.AllAtOnce
+✔ Deployment config "CodeDeployDefault.AllAtOnce" already exists
+
+Step 5: Checking Deployment Group
+➜ aws deploy get-deployment-group --application-name TechPivot --deployment-group-name www.techpivot.net
+✔ Deployment group "www.techpivot.net" already exists for application "TechPivot"
+
+Step 6: Compressing Source Contents
+➜ cd "/home/ubuntu/deploy" && zip -rq "/tmp/729#a4d2fa4.zip" .
+✔ Successfully compressed "/home/ubuntu/deploy" (57M) into "729#a4d2fa4.zip" (18M)
+
+Step 7: Copying Bundle to S3
+➜ aws s3 cp --sse "/tmp/729#a4d2fa4.zip" "s3://techpivot-codedeploy/www/729#a4d2fa4.zip"
+✔ Successfully copied bundle "729#a4d2fa4.zip" to S3
+
+Step 8: Limiting Deploy Revisions per Bucket/Key
+
+Checking bucket/key to limit total revisions at 10 files ...
+➜ aws s3 ls "s3://techpivot-codedeploy/www/"
+
+Removing oldest 1 file(s) ...
+➜ aws s3 rm "s3://techpivot-codedeploy/www/713#1ef9317.zip"
+✔ Successfuly removed 1 file(s)
+
+Step 9: Registering Revision
+➜ aws deploy register-application-revision --application-name "TechPivot" --s3-location bucket=techpivot-codedeploy,bundleType=zip,key=www/729#a4d2fa4.zip --description "master (#a4d2fa4)"
+✔ Registering revision succeeded
+
+Step 10: Creating Deployment
+➜ aws deploy create-deployment --application-name TechPivot --deployment-config-name CodeDeployDefault.AllAtOnce --deployment-group-name www.techpivot.net --s3-location bucket=techpivot-codedeploy,bundleType=zip,key=www/729#a4d2fa4.zip --description "Deployed via CircleCI on Sun Nov  8 23:32:30 UTC 2015"
+✔ Successfully created deployment: "d-CDR1HA75C"
+
+Note: You can follow your deployment at: https://console.aws.amazon.com/codedeploy/home#/deployments/d-CDR1HA75C
+
+Deployment Overview
+
+Monitoring deployment "d-CDR1HA75C" for "TechPivot" on deployment group www.techpivot.net ...
+➜ aws deploy get-deployment --deployment-id "d-CDR1HA75C"
+
+
+Status  | In Progress: 0  | Pending: 0  | Skipped: 0  | Succeeded: 1  | Failed: 0  |
+✔ Deployment of application "TechPivot" on deployment group "www.techpivot.net" succeeded
+```
 
 
 ## Variables
