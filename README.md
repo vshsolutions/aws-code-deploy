@@ -1,5 +1,10 @@
 # AWS Code Deploy Executer
 
+[![Latest Version](https://img.shields.io/packagist/v/techpivot/aws-code-deploy.svg?style=flat-square)](https://packagist.org/packages/techpivot/aws-code-deploy)
+[![Total Downloads](https://img.shields.io/packagist/dt/techpivot/aws-code-deploy.svg?style=flat-square)](https://packagist.org/packages/techpivot/aws-code-deploy)
+[![Software License](https://img.shields.io/badge/license-MIT-blue.svg?style=flat-square)](https://raw.githubusercontent.com/techpivot/phalcon-ci-installer/master/LICENSE)
+
+
 This script deploys applications with the [AWS Code Deploy](http://docs.aws.amazon.com/codedeploy/latest/userguide/welcome.html) service. This script has been adapted to be easily portable and configurable via environment variables such that it can be incorporated within CI services that do not natively include support for Code Deploy. Additionally, this script includes additional functionality described below that is typically not included in out-of-box Code Deploy CI systems. For more information, refer to the [AWS Code Deploy](http://docs.aws.amazon.com/codedeploy/latest/userguide/welcome.html) documentation or
 the [AWS CLI API](http://docs.aws.amazon.com/cli/latest/reference/deploy/index.html).
 
