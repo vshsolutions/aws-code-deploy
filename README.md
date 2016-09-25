@@ -95,28 +95,32 @@ Status  | In Progress: 0  | Pending: 0  | Skipped: 0  | Succeeded: 1  | Failed: 
   * The file can then be executed from the /vendor/bin directory: `bash vendor/bin/aws-code-deploy.sh`
 
 
-## Variables
+## Environment Variables
 
-```
-AWS_CODE_DEPLOY_KEY
-AWS_CODE_DEPLOY_SECRET
-AWS_CODE_DEPLOY_REGION
-AWS_CODE_DEPLOY_APPLICATION_NAME
-AWS_CODE_DEPLOY_DEPLOYMENT_CONFIG_NAME
-AWS_CODE_DEPLOY_MINIMUM_HEALTHY_HOSTS
-AWS_CODE_DEPLOY_DEPLOYMENT_GROUP_NAME
-AWS_CODE_DEPLOY_SERVICE_ROLE_ARN
-AWS_CODE_DEPLOY_EC2_TAG_FILTERS
-AWS_CODE_DEPLOY_AUTO_SCALING_GROUPS
-AWS_CODE_DEPLOY_APP_SOURCE
-AWS_CODE_DEPLOY_S3_BUCKET
-AWS_CODE_DEPLOY_S3_KEY_PREFIX
-AWS_CODE_DEPLOY_S3_FILENAME
-AWS_CODE_DEPLOY_S3_LIMIT_BUCKET_FILES
-AWS_CODE_DEPLOY_S3_SSE
-AWS_CODE_DEPLOY_REVISION_DESCRIPTION
-AWS_CODE_DEPLOY_DEPLOYMENT_DESCRIPTION
-```
+Brief summary is listed in the table below. Full descriptions with recommendations can be found by searching
+the readme for the variable name.
+
+| Variable                                  | Required | Description                                                |
+| :---------------------------------------- | :------- | :----------------------------------------------------------|
+| `AWS_CODE_DEPLOY_KEY`                     | No       | If specified, sets the AWS key id |
+| `AWS_CODE_DEPLOY_SECRET`                  | No       | If specified, sets the AWS secret key |
+| `AWS_CODE_DEPLOY_REGION`                  | No       | If specified, sets the AWS region |
+| `AWS_CODE_DEPLOY_APPLICATION_NAME`        | **Yes**  | Application name. If it does not exist, will create. |
+| `AWS_CODE_DEPLOY_DEPLOYMENT_GROUP_NAME`   | **Yes**  | Deployment group name. If it does not exist, will create. |
+| `AWS_CODE_DEPLOY_DEPLOYMENT_CONFIG_NAME`  | No       | Deployment config name. By default: _CodeDeployDefault.OneAtATime_ |
+| `AWS_CODE_DEPLOY_MINIMUM_HEALTHY_HOSTS`   | No       | The minimum number of healthy instances during deployment. By default: _type=FLEET_PERCENT,value=75_ |
+| `AWS_CODE_DEPLOY_SERVICE_ROLE_ARN`        | No       | Service role arn giving permissions to use Code Deploy when creating a deployment group |
+| `AWS_CODE_DEPLOY_EC2_TAG_FILTERS`         | No       | EC2 tags to filter on when creating a deployment group |
+| `AWS_CODE_DEPLOY_AUTO_SCALING_GROUPS`     | No       | Auto Scaling groups when creating a deployment group |
+| `AWS_CODE_DEPLOY_APP_SOURCE`              | **Yes**  | The source directory used to create the deploy archive |
+| `AWS_CODE_DEPLOY_S3_BUCKET`               | **Yes**  | The name of the S3 bucket to deploy the revision |
+| `AWS_CODE_DEPLOY_S3_KEY_PREFIX`           | No       | A prefix to use for the revision bucket key |
+| `AWS_CODE_DEPLOY_S3_FILENAME`             | **Yes**  | The destination name within S3. |
+| `AWS_CODE_DEPLOY_S3_LIMIT_BUCKET_FILES`   | No       | Number of revisions to limit. If 0, unlimited. By default: 0 |
+| `AWS_CODE_DEPLOY_S3_SSE`                  | No       | If specified and `true` will ensure the CodeDeploy archive is stored in S3 with Server Side Encryption (SSE) |
+| `AWS_CODE_DEPLOY_REVISION_DESCRIPTION`    | No       | A description that is stored within AWS Code Deploy that stores information about the specific revision |
+| `AWS_CODE_DEPLOY_DEPLOYMENT_DESCRIPTION`  | No       | A description that is stored within AWS Code Deploy that stores information about the specific deployment |
+
 
 ## Examples
 
@@ -291,7 +295,7 @@ This step ensures the deployment group exists within the specified application. 
 Environment Variables:
 
 * `AWS_CODE_DEPLOY_DEPLOYMENT_GROUP_NAME` (required): Deployment group name
-* `AWS_CODE_DEPLOY_SERVICE_ROLE_ARN` (required): Service role arn giving permissions to use Code Deploy when creating a deployment group
+* `AWS_CODE_DEPLOY_SERVICE_ROLE_ARN` (optional): Service role arn giving permissions to use Code Deploy when creating a deployment group
 * `AWS_CODE_DEPLOY_EC2_TAG_FILTERS` (optional): EC2 tags to filter on when creating a deployment group. Specify as a string with the following comma separated keys:
     * **Key** *string*
     * **Value** *string*
@@ -323,7 +327,7 @@ This step consists to push the application to S3.
 Environment Variables:
 
 * `AWS_CODE_DEPLOY_S3_BUCKET` (required): The name of the S3 bucket to deploy the revision
-* `AWS_CODE_DEPLOY_S3_KEY_PREFIX` (optional): A prefix to use for the file key. It's highly recommended to structure a bucket with a prefix per deployment group. This allows to limit stored revisions per deployment group. Note: A leading or trailing slash is not required.  
+* `AWS_CODE_DEPLOY_S3_KEY_PREFIX` (optional): A prefix to use for the file key. It's highly recommended to structure a bucket with a prefix per deployment group. This allows to limit stored revisions per deployment group. Note: A leading or trailing slash is not required.
 
   For example:
 

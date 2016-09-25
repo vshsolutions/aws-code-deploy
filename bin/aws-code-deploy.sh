@@ -181,45 +181,38 @@ fi
 
 h1 "Step 2: Configuring AWS"
 if [ -z "$AWS_CODE_DEPLOY_KEY" ]; then
-  if [ ! -e ~/.aws/config ]; then
-    error "Please configure AWS credentials or explicitly set the \"\$AWS_CODE_DEPLOY_KEY\" variable"
-    exit 1    
-  fi
-  if [ $(grep aws_access_key_id ~/.aws/config | wc -l) -lt 1 ]; then
-    error "Unable to find \"aws_access_key_id\" in ~/.aws/config. Please configure AWS credentials or explicitly set the \"\$AWS_CODE_DEPLOY_KEY\" variable"
+  # Ensure an access key has already been set
+  if [ $(aws configure list | grep access_key | wc -l) -lt 1 ]; then
+    error "No AWS_CODE_DEPLOY_KEY specified and AWS cli is not configured with an access key via env, config, or shared credentials"
     exit 1  
   fi
   success "AWS Access Key already configured."
 else
-  CONFIGURE_KEY_OUTPUT=$(aws configure set aws_access_key_id $AWS_CODE_DEPLOY_KEY 2>&1)
+  $(aws configure set aws_access_key_id $AWS_CODE_DEPLOY_KEY 2>&1)
   success "Successfully configured AWS Access Key ID."
 fi
 
 if [ -z "$AWS_CODE_DEPLOY_SECRET" ]; then
-  if [ ! -e ~/.aws/config ]; then
-    error "Please configure AWS credentials or explicitly set the \"\$AWS_CODE_DEPLOY_SECRET\" variable"
-    exit 1    
-  fi
-  if [ $(grep aws_secret_access_key ~/.aws/config | wc -l) -lt 1 ]; then
-    error "Unable to find \"aws_secret_access_key\" in ~/.aws/config. Please configure AWS credentials or explicitly set the \"\$AWS_CODE_DEPLOY_SECRET\" variable"
+  # Ensure an access key secret has already been set
+  if [ $(aws configure list | grep secret_key | wc -l) -lt 1 ]; then
+    error "No AWS_CODE_DEPLOY_SECRET specified and AWS cli is not configured with an access secret via env, config, or shared credentials"
     exit 1  
   fi
   success "AWS Secret Access Key already configured."
 else
-  CONFIGURE_KEY_OUTPUT=$(aws configure set aws_secret_access_key $AWS_CODE_DEPLOY_SECRET 2>&1)
+  $(aws configure set aws_secret_access_key $AWS_CODE_DEPLOY_SECRET 2>&1)
   success "Successfully configured AWS Secret Access Key ID."
 fi
 
 if [ -z "$AWS_CODE_DEPLOY_REGION" ]; then
-  if [ -e ~/.aws/config ]; then
-    if [ $(grep region ~/.aws/config | wc -l) -lt 1 ]; then
-      warnNotice "Unable to configure AWS region."
-    else
-      success "AWS Region already configured."
-    fi
+  # Ensure AWS region has already been set
+  if [ $(aws configure list | grep region | wc -l) -lt 1 ]; then
+    error "No AWS_CODE_DEPLOY_REGION specified and AWS cli is not configured with an existing default region via env, config, or shared credentials"
+    exit 1  
   fi
+  success "AWS Region already configured."
 else
-  CONFIGURE_REGION_OUTPUT=$(aws configure set default.region $AWS_CODE_DEPLOY_REGION 2>&1)
+  $(aws configure set default.region $AWS_CODE_DEPLOY_REGION 2>&1)
   success "Successfully configured AWS default region."
 fi
 
