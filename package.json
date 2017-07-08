@@ -1,0 +1,23 @@
+{
+  "name": "aws-code-deploy",
+  "version": "1.0.2",
+  "description": "Bash script to easily deploy applications with AWS Code Deploy.",
+  "author": "TechPivot",
+  "main": "bin/aws-code-deploy.sh",
+  "bin": { 
+    "aws-code-deploy": "./bin/aws-code-deploy.sh"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+ssh://git@github.com/techpivot/aws-code-deploy.git"
+  },
+  "license": "MIT",
+  "keywords": [
+    "aws",
+    "code-deploy",
+    "bash",
+    "shell",
+    "ci",
+    "deploy"
+  ]
+}
