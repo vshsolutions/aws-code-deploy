@@ -8,16 +8,12 @@
 This script deploys applications with the [AWS Code Deploy](http://docs.aws.amazon.com/codedeploy/latest/userguide/welcome.html) service. This script has been adapted to be easily portable and configurable via environment variables such that it can be incorporated within CI services that do not natively include support for Code Deploy. Additionally, this script includes additional functionality described below that is typically not included in out-of-box Code Deploy CI systems. For more information, refer to the [AWS Code Deploy](http://docs.aws.amazon.com/codedeploy/latest/userguide/welcome.html) documentation or
 the [AWS CLI API](http://docs.aws.amazon.com/cli/latest/reference/deploy/index.html).
 
-#### Features:
+### Features:
+ * Minimal dependencies: aws (If not installed automatically installed)
  * Compression of source contents
  * Ability to limit the number of stored revisions by a key prefix to help reduce S3 total file size
  * Server side encryption for revisions
  * Full diagnostic output from failed instances
-
-#### Operating Systems Supported:
- * Debian 7
- * Ubuntu 12.04
- * Ubuntu 14.04
 
 
 ## Sample Output
@@ -84,15 +80,17 @@ Status  | In Progress: 0  | Pending: 0  | Skipped: 0  | Succeeded: 1  | Failed: 
 
 ## How to Include In Your Project
 
-1. Via Composer (For PHP Projects)
-  * Include in `composer.json` as follows:
+### Composer (For PHP Projects)
+1. Include in `composer.json` as follows:
 
-       ```json
-       "require-dev" : {
-            "techpivot/aws-code-deploy": "~1.0"
-        }
-        ```
+    ```json
+    "require-dev" : {
+        "techpivot/aws-code-deploy": "~1.0"
+    }
+    ```
   * The file can then be executed from the /vendor/bin directory: `bash vendor/bin/aws-code-deploy.sh`
+
+### NPM (General Projects)
 
 
 ## Environment Variables
