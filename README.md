@@ -1,7 +1,8 @@
 # AWS Code Deploy Executer
 
-[![Latest Version](https://img.shields.io/packagist/v/techpivot/aws-code-deploy.svg?style=flat-square)](https://packagist.org/packages/techpivot/aws-code-deploy)
-[![Total Downloads](https://img.shields.io/packagist/dt/techpivot/aws-code-deploy.svg?style=flat-square)](https://packagist.org/packages/techpivot/aws-code-deploy)
+[![Latest Version](https://img.shields.io/github/release/techpivot/aws-code-deploy.svg?style=flat-square&label=version)](https://github.com/techpivot/aws-code-deploy)
+[![Total Downloads](https://img.shields.io/packagist/dt/techpivot/aws-code-deploy.svg?style=flat-square&label=packagist%20downloads)](https://packagist.org/packages/techpivot/aws-code-deploy)
+[![npm](https://img.shields.io/npm/dt/aws-code-deploy.svg?style=flat-square&label=npm%20downloads)](https://www.npmjs.com/package/aws-code-deploy)
 [![Software License](https://img.shields.io/badge/license-MIT-blue.svg?style=flat-square)](https://raw.githubusercontent.com/techpivot/phalcon-ci-installer/master/LICENSE)
 
 
