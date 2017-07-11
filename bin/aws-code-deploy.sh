@@ -313,31 +313,54 @@ else
 fi
 
 
-
-# ----- Compressing Source -----
+# ----- Application Source -----
+h1 "Step 6: Checking Application Source"
 APP_SOURCE=$(readlink -f "${AWS_CODE_DEPLOY_APP_SOURCE:-.}")
-APP_LOCAL_FILE="${AWS_CODE_DEPLOY_S3_FILENAME%.*}.zip"
-DEPLOYMENT_COMPRESS_ORIG_DIR_SIZE=$(du -hs $APP_SOURCE | awk '{ print $1}')
-APP_LOCAL_TEMP_FILE="/tmp/$APP_LOCAL_FILE"
 
-h1 "Step 6: Compressing Source Contents"
-if [ ! -d "$APP_SOURCE" ]; then
-  error "The specified source directory \"${APP_SOURCE}\" does not exist."
-  exit 1
+if [ ! -d "$APP_SOURCE" -a ! -e "$APP_SOURCE" ]; then
+  error "The specified application source \"${APP_SOURCE}\" does not exist."
+  exit
 fi
-if [ ! -e "$APP_SOURCE/appspec.yml" ]; then
-  error "The specified source directory \"${APP_SOURCE}\" does not contain an \"appspec.yml\" in the application root."
-  exit 1
+if [ -d "$APP_SOURCE" ]; then 
+  if [ ! -e "$APP_SOURCE/appspec.yml" ]; then
+    error "The specified source directory \"${APP_SOURCE}\" does not contain an \"appspec.yml\" in the application root."
+    exit 1
+  fi
+  if ! typeExists "zip"; then
+    note "Installing zip binaries ..."
+    sudo apt-get install -y zip
+    note "Zip binaries installed."
+  fi
+  DEPLOYMENT_COMPRESS_ORIG_DIR_SIZE=$(du -hs $APP_SOURCE | awk '{ print $1}')
+  APP_LOCAL_FILE="${AWS_CODE_DEPLOY_S3_FILENAME%.*}.zip"
+  APP_LOCAL_TEMP_FILE="/tmp/$APP_LOCAL_FILE"
+  
+  runCommand "cd \"$APP_SOURCE\" && zip -rq \"${APP_LOCAL_TEMP_FILE}\" ." \
+             "Unable to compress \"$APP_SOURCE\"" 
+  DEPLOYMENT_COMPRESS_FILESIZE=$(ls -lah "${APP_LOCAL_TEMP_FILE}" | awk '{ print $5}')
+  BUNDLE_TYPE="zip"
+  success "Successfully compressed \"$APP_SOURCE\" ($DEPLOYMENT_COMPRESS_ORIG_DIR_SIZE) into \"$APP_LOCAL_FILE\" ($DEPLOYMENT_COMPRESS_FILESIZE)"
+else
+  APP_SOURCE_BASENAME=$(basename "$APP_SOURCE")
+  APP_SOURCE_FILESIZE=$(ls -lah "${APP_SOURCE}" | awk '{ print $5}')
+  EXTENSION="${APP_SOURCE#*.}"
+  
+  if [ $EXTENSION == "tar" ]; then
+    BUNDLE_TYPE="tar"
+  elif [ $EXTENSION == "tar.gz" ]; then
+    BUNDLE_TYPE="tgz"
+  elif [ $EXTENSION == "zip" ]; then
+    BUNDLE_TYPE="zip"
+  else
+    error "Unsupported bundle type for application source file: ${APP_SOURCE_BASENAME} - Must be tar, zip or tgz"
+    exit 1
+  fi
+  
+  APP_LOCAL_FILE=$APP_SOURCE_BASENAME
+  APP_LOCAL_TEMP_FILE=$APP_SOURCE
+  
+  success "Valid source file: $APP_SOURCE_BASENAME ($BUNDLE_TYPE) ($APP_SOURCE_FILESIZE)"
 fi
-if ! typeExists "zip"; then
-  note "Installing zip binaries ..."
-  sudo apt-get install -y zip
-  note "Zip binaries installed."
-fi
-runCommand "cd \"$APP_SOURCE\" && zip -rq \"${APP_LOCAL_TEMP_FILE}\" ." \
-           "Unable to compress \"$APP_SOURCE\"" 
-DEPLOYMENT_COMPRESS_FILESIZE=$(ls -lah "${APP_LOCAL_TEMP_FILE}" | awk '{ print $5}')
-success "Successfully compressed \"$APP_SOURCE\" ($DEPLOYMENT_COMPRESS_ORIG_DIR_SIZE) into \"$APP_LOCAL_FILE\" ($DEPLOYMENT_COMPRESS_FILESIZE)"
 
 
 
@@ -418,7 +441,6 @@ fi
 # ----------------------
 h1 "Step 9: Registering Revision"
 
-BUNDLE_TYPE=${APP_LOCAL_FILE##*.}
 REGISTER_APP_CMD="aws deploy register-application-revision --application-name \"$APPLICATION_NAME\""
 
 if [ -n "$S3_KEY_PREFIX" ]; then
@@ -444,7 +466,7 @@ runCommand "$REGISTER_APP_CMD" \
 # ----------------------
 DEPLOYMENT_DESCRIPTION="$AWS_CODE_DEPLOY_DEPLOYMENT_DESCRIPTION"
 h1 "Step 10: Creating Deployment"
-DEPLOYMENT_CMD="aws deploy create-deployment --application-name $APPLICATION_NAME --deployment-config-name $DEPLOYMENT_CONFIG_NAME --deployment-group-name $DEPLOYMENT_GROUP --s3-location $S3_LOCATION"
+DEPLOYMENT_CMD="aws deploy create-deployment --output json --application-name $APPLICATION_NAME --deployment-config-name $DEPLOYMENT_CONFIG_NAME --deployment-group-name $DEPLOYMENT_GROUP --s3-location $S3_LOCATION"
 
 if [ -n "$DEPLOYMENT_DESCRIPTION" ]; then
   DEPLOYMENT_CMD="$DEPLOYMENT_CMD --description \"$DEPLOYMENT_DESCRIPTION\""
@@ -469,7 +491,7 @@ DEPLOYMENT_OVERVIEW=${AWS_CODE_DEPLOY_DEPLOYMENT_OVERVIEW:-true}
 if [ "true" = "$DEPLOYMENT_OVERVIEW" ]; then
   h1 "Deployment Overview"
   
-  DEPLOYMENT_GET="aws deploy get-deployment --deployment-id \"$DEPLOYMENT_ID\""  
+  DEPLOYMENT_GET="aws deploy get-deployment --output json --deployment-id \"$DEPLOYMENT_ID\""  
   h2 "Monitoring deployment \"$DEPLOYMENT_ID\" for \"$APPLICATION_NAME\" on deployment group $DEPLOYMENT_GROUP ..."
   info "$DEPLOYMENT_GET"
   printf "\n"
@@ -478,7 +500,7 @@ if [ "true" = "$DEPLOYMENT_OVERVIEW" ]; then
     do
       DEPLOYMENT_GET_OUTPUT="$(eval $DEPLOYMENT_GET 2>&1)"
       if [ $? != 0 ]; then
-        warn "$DEPLOYMENT_GET_OUTPUT"
+        warnError "$DEPLOYMENT_GET_OUTPUT"
         error "Deployment of application \"$APPLICATION_NAME\" on deployment group \"$DEPLOYMENT_GROUP\" failed"
         exit 1
       fi

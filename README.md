@@ -111,7 +111,7 @@ the readme for the variable name.
 | `AWS_CODE_DEPLOY_SERVICE_ROLE_ARN`        | No       | Service role arn giving permissions to use Code Deploy when creating a deployment group |
 | `AWS_CODE_DEPLOY_EC2_TAG_FILTERS`         | No       | EC2 tags to filter on when creating a deployment group |
 | `AWS_CODE_DEPLOY_AUTO_SCALING_GROUPS`     | No       | Auto Scaling groups when creating a deployment group |
-| `AWS_CODE_DEPLOY_APP_SOURCE`              | **Yes**  | The source directory used to create the deploy archive |
+| `AWS_CODE_DEPLOY_APP_SOURCE`              | **Yes**  | The source directory used to create the deploy archive or a pre-bundled tar, tgz, or zip |
 | `AWS_CODE_DEPLOY_S3_BUCKET`               | **Yes**  | The name of the S3 bucket to deploy the revision |
 | `AWS_CODE_DEPLOY_S3_KEY_PREFIX`           | No       | A prefix to use for the revision bucket key |
 | `AWS_CODE_DEPLOY_S3_FILENAME`             | **Yes**  | The destination name within S3. |
