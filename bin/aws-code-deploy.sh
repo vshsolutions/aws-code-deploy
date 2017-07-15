@@ -25,7 +25,7 @@ blue="\e[34m"
 h1() {
   printf "\n${bold}${underline}%s${reset}\n" "$(echo "$@" | sed '/./,$!d')"
 }
-h2() { 
+h2() {
   printf "\n${bold}%s${reset}\n" "$(echo "$@" | sed '/./,$!d')"
 }
 info() {
@@ -92,7 +92,7 @@ installAwsCli() {
     runCommand "sudo apt-get install -y python-pip"
     success "Installing PIP (`pip --version`) succeeded"
   fi
-  
+
   h2 "Installing AWS CLI"
   runCommand "sudo pip install awscli"
 }
@@ -104,13 +104,13 @@ vercomp() {
   fi
   local IFS=.
   local i ver1=($1) ver2=($2)
-  
+
   # fill empty fields in ver1 with zeros
   for ((i=${#ver1[@]}; i<${#ver2[@]}; i++))
   do
     ver1[i]=0
   done
-  
+
   for ((i=0; i<${#ver1[@]}; i++))
   do
     if [[ -z ${ver2[i]} ]]
@@ -162,13 +162,13 @@ if ! typeExists "aws"; then
 else
   # aws-cli 1.9.8 is required for proper SSE syntax
   AWS_FULL_VER=$(aws --version 2>&1)
-  AWS_VER=$(echo $AWS_FULL_VER | sed -e 's/aws-cli\///' | sed -e 's/ Python.*//') 
+  AWS_VER=$(echo $AWS_FULL_VER | sed -e 's/aws-cli\///' | sed -e 's/ Python.*//')
   vercomp $AWS_VER "1.9.8"
   if [[ $? == 2 ]]; then
     h2 "Installing updated AWS CLI version ($AWS_VER < 1.9.8)"
     installAwsCli
-  fi 
-  
+  fi
+
   success "Dependencies met $(aws --version 2>&1)"
 fi
 
@@ -184,7 +184,7 @@ if [ -z "$AWS_CODE_DEPLOY_KEY" ]; then
   # Ensure an access key has already been set
   if [ $(aws configure list | grep access_key | wc -l) -lt 1 ]; then
     error "No AWS_CODE_DEPLOY_KEY specified and AWS cli is not configured with an access key via env, config, or shared credentials"
-    exit 1  
+    exit 1
   fi
   success "AWS Access Key already configured."
 else
@@ -196,7 +196,7 @@ if [ -z "$AWS_CODE_DEPLOY_SECRET" ]; then
   # Ensure an access key secret has already been set
   if [ $(aws configure list | grep secret_key | wc -l) -lt 1 ]; then
     error "No AWS_CODE_DEPLOY_SECRET specified and AWS cli is not configured with an access secret via env, config, or shared credentials"
-    exit 1  
+    exit 1
   fi
   success "AWS Secret Access Key already configured."
 else
@@ -208,7 +208,7 @@ if [ -z "$AWS_CODE_DEPLOY_REGION" ]; then
   # Ensure AWS region has already been set
   if [ $(aws configure list | grep region | wc -l) -lt 1 ]; then
     error "No AWS_CODE_DEPLOY_REGION specified and AWS cli is not configured with an existing default region via env, config, or shared credentials"
-    exit 1  
+    exit 1
   fi
   success "AWS Region already configured."
 else
@@ -304,7 +304,7 @@ if [ $? -ne 0 ]; then
   if [ -n "$EC2_TAG_FILTERS" ]; then
     DEPLOYMENT_GROUP_CREATE="$DEPLOYMENT_GROUP_CREATE --ec2-tag-filters $EC2_TAG_FILTERS"
   fi
-  
+
   runCommand "$DEPLOYMENT_GROUP_CREATE" \
              "Creating deployment group \"$DEPLOYMENT_GROUP\" for application \"$APPLICATION_NAME\" failed" \
              "Creating deployment group \"$DEPLOYMENT_GROUP\" for application \"$APPLICATION_NAME\" succeeded"
@@ -318,10 +318,11 @@ h1 "Step 6: Checking Application Source"
 APP_SOURCE=$(readlink -f "${AWS_CODE_DEPLOY_APP_SOURCE:-.}")
 
 if [ ! -d "$APP_SOURCE" -a ! -e "$APP_SOURCE" ]; then
-  error "The specified application source \"${APP_SOURCE}\" does not exist."
-  exit
+  # Note: Use original variable for output as the readlink can potentially evaluate to ""
+  error "The specified application source \"${AWS_CODE_DEPLOY_APP_SOURCE}\" does not exist."
+  exit 1
 fi
-if [ -d "$APP_SOURCE" ]; then 
+if [ -d "$APP_SOURCE" ]; then
   if [ ! -e "$APP_SOURCE/appspec.yml" ]; then
     error "The specified source directory \"${APP_SOURCE}\" does not contain an \"appspec.yml\" in the application root."
     exit 1
@@ -334,9 +335,9 @@ if [ -d "$APP_SOURCE" ]; then
   DEPLOYMENT_COMPRESS_ORIG_DIR_SIZE=$(du -hs $APP_SOURCE | awk '{ print $1}')
   APP_LOCAL_FILE="${AWS_CODE_DEPLOY_S3_FILENAME%.*}.zip"
   APP_LOCAL_TEMP_FILE="/tmp/$APP_LOCAL_FILE"
-  
+
   runCommand "cd \"$APP_SOURCE\" && zip -rq \"${APP_LOCAL_TEMP_FILE}\" ." \
-             "Unable to compress \"$APP_SOURCE\"" 
+             "Unable to compress \"$APP_SOURCE\""
   DEPLOYMENT_COMPRESS_FILESIZE=$(ls -lah "${APP_LOCAL_TEMP_FILE}" | awk '{ print $5}')
   BUNDLE_TYPE="zip"
   success "Successfully compressed \"$APP_SOURCE\" ($DEPLOYMENT_COMPRESS_ORIG_DIR_SIZE) into \"$APP_LOCAL_FILE\" ($DEPLOYMENT_COMPRESS_FILESIZE)"
@@ -344,7 +345,7 @@ else
   APP_SOURCE_BASENAME=$(basename "$APP_SOURCE")
   APP_SOURCE_FILESIZE=$(ls -lah "${APP_SOURCE}" | awk '{ print $5}')
   EXTENSION="${APP_SOURCE#*.}"
-  
+
   if [ $EXTENSION == "tar" ]; then
     BUNDLE_TYPE="tar"
   elif [ $EXTENSION == "tar.gz" ]; then
@@ -355,10 +356,10 @@ else
     error "Unsupported bundle type for application source file: ${APP_SOURCE_BASENAME} - Must be tar, zip or tgz"
     exit 1
   fi
-  
+
   APP_LOCAL_FILE=$APP_SOURCE_BASENAME
   APP_LOCAL_TEMP_FILE=$APP_SOURCE
-  
+
   success "Valid source file: $APP_SOURCE_BASENAME ($BUNDLE_TYPE) ($APP_SOURCE_FILESIZE)"
 fi
 
@@ -403,24 +404,24 @@ else
              "Unable to list directory contents \"$S3_BUCKET/\"" \
              "" \
              S3_LS_OUTPUT
-  
+
   # Sort the output by date first
   S3_LS_OUTPUT=$(echo "$S3_LS_OUTPUT" | sort)
 
   # Filter out S3 prefixes (These do not count, especially useful in root bucket location)
   S3_FILES=()
   IFS=$'\n';
-  for line in $S3_LS_OUTPUT; do 
+  for line in $S3_LS_OUTPUT; do
     if [[ ! $line =~ ^[[:space:]]+PRE[[:space:]].*$ ]]; then
       S3_FILES+=("$line")
     fi
   done
-  
+
   S3_TOTAL_FILES=${#S3_FILES[@]}
   S3_NUMBER_FILES_TO_CLEAN=$(($S3_TOTAL_FILES-$S3_DEPLOY_LIMIT))
   if [ $S3_NUMBER_FILES_TO_CLEAN -gt 0 ]; then
     h2 "Removing oldest $S3_NUMBER_FILES_TO_CLEAN file(s) ..."
-    for line in "${S3_FILES[@]}"; do 
+    for line in "${S3_FILES[@]}"; do
       if [ $S3_NUMBER_FILES_TO_CLEAN -le 0 ]; then
         success "Successfuly removed $(($S3_TOTAL_FILES-$S3_DEPLOY_LIMIT)) file(s)"
         break
@@ -490,12 +491,12 @@ note "You can follow your deployment at: https://console.aws.amazon.com/codedepl
 DEPLOYMENT_OVERVIEW=${AWS_CODE_DEPLOY_DEPLOYMENT_OVERVIEW:-true}
 if [ "true" = "$DEPLOYMENT_OVERVIEW" ]; then
   h1 "Deployment Overview"
-  
-  DEPLOYMENT_GET="aws deploy get-deployment --output json --deployment-id \"$DEPLOYMENT_ID\""  
+
+  DEPLOYMENT_GET="aws deploy get-deployment --output json --deployment-id \"$DEPLOYMENT_ID\""
   h2 "Monitoring deployment \"$DEPLOYMENT_ID\" for \"$APPLICATION_NAME\" on deployment group $DEPLOYMENT_GROUP ..."
   info "$DEPLOYMENT_GET"
   printf "\n"
-      
+
   while :
     do
       DEPLOYMENT_GET_OUTPUT="$(eval $DEPLOYMENT_GET 2>&1)"
@@ -504,7 +505,7 @@ if [ "true" = "$DEPLOYMENT_OVERVIEW" ]; then
         error "Deployment of application \"$APPLICATION_NAME\" on deployment group \"$DEPLOYMENT_GROUP\" failed"
         exit 1
       fi
-    
+
       # Deployment Overview
       IN_PROGRESS=$(echo "$DEPLOYMENT_GET_OUTPUT" | jsonValue "InProgress" | tr -d "\r\n ")
       PENDING=$(echo "$DEPLOYMENT_GET_OUTPUT" | jsonValue "Pending" | tr -d "\r\n ")
@@ -517,18 +518,18 @@ if [ "true" = "$DEPLOYMENT_OVERVIEW" ]; then
       if [ "$SKIPPED" == "" ]; then SKIPPED="-"; fi
       if [ "$SUCCEEDED" == "" ]; then SUCCEEDED="-"; fi
       if [ "$FAILED" == "" ]; then FAILED="-"; fi
-      
+
       # Deployment Status
       STATUS=$(echo "$DEPLOYMENT_GET_OUTPUT" | jsonValue "status" | tr -d "\r\n" | tr -d " ")
       ERROR_MESSAGE=$(echo "$DEPLOYMENT_GET_OUTPUT" | jsonValue "message")
-      
+
       printf "\r${bold}${blink}Status${reset}  | In Progress: $IN_PROGRESS  | Pending: $PENDING  | Skipped: $SKIPPED  | Succeeded: $SUCCEEDED  | Failed: $FAILED  | "
 
       # Print Failed Details
       if [ "$STATUS" == "Failed" ]; then
         printf "\r${bold}Status${reset}  | In Progress: $IN_PROGRESS  | Pending: $PENDING  | Skipped: $SKIPPED  | Succeeded: $SUCCEEDED  | Failed: $FAILED  |\n"
         error "Deployment failed: $ERROR_MESSAGE"
-          
+
         # Retrieve failed instances. Use text output here to easier retrieve array. Output format:
         # INSTANCESLIST   i-1497a9e2
         # INSTANCESLIST   i-23a541eb
@@ -538,22 +539,22 @@ if [ "true" = "$DEPLOYMENT_OVERVIEW" ]; then
                    "" \
                    "" \
                    LIST_INSTANCES_OUTPUT
-                   
+
         INSTANCE_IDS=($(echo "$LIST_INSTANCES_OUTPUT" | sed -r 's/INSTANCESLIST\s+//g'))
         INSTANCE_IDS_JOINED=$(printf ", %s" "${INSTANCE_IDS[@]}")
         success "Found ${#INSTANCE_IDS[@]} failed instance(s) [ ${INSTANCE_IDS_JOINED:2} ]"
-        
+
         # Enumerate over each failed instance
         for i in "${!INSTANCE_IDS[@]}"; do
           FAILED_INSTANCE_OUTPUT=$(aws deploy get-deployment-instance --deployment-id $DEPLOYMENT_ID --instance-id ${INSTANCE_IDS[$i]} --output text)
           printf "\n${bold}Instance: ${INSTANCE_IDS[$i]}${reset}\n"
-          
+
           echo "$FAILED_INSTANCE_OUTPUT" | while read -r line; do
-           
+
             case "$(echo $line | awk '{ print $1; }')" in
-            
+
               INSTANCESUMMARY)
-                
+
                 printf "    Instance ID:  %s\n" "$(echo $line | awk '{ print $3; }')"
                 printf "         Status:  %s\n" "$(echo $line | awk '{ print $5; }')"
                 printf "Last Updated At:  %s\n\n" "$(date -d @$(echo $line | awk '{ print $4; }'))"
@@ -566,56 +567,56 @@ if [ "true" = "$DEPLOYMENT_OVERVIEW" ]; then
               LIFECYCLEEVENTS)
                 # For now, lets just strip off start/stop times. Also convert tabs to spaces
                 lineModified=$(echo "$line" | sed -r 's/[0-9]+\.[0-9]+//g' | sed 's/\t/    /g')
-               
+
                 # Bugfix: Ubuntu 12.04 has some weird issues with spacing as seen on CircleCI. We fix this
                 # by just condensing down to single spaces and ensuring the proper separator.
                 IFS=$' '
                 ARGS=($(echo "$lineModified" | sed -r 's/\s+/ /g'))
-                
+
                 if [ ${#ARGS[@]} == 3 ]; then
                   case "${ARGS[2]}" in
                     Succeeded)
                       printf "${bold}${green}✔ [%s]${reset}\t%s\n" "${ARGS[2]}" "${ARGS[1]}"
                       ;;
-                  
+
                     Skipped)
                       printf "${bold}  [%s]${reset}\t%s\n" "${ARGS[2]}" "${ARGS[1]}"
                       ;;
-                      
+
                     Failed)
                       printf "${bold}${red}✖ [%s]${reset}\t%s\n" "${ARGS[2]}" "${ARGS[1]}"
                       ;;
                   esac
-                  
+
                 else
                   echo "[UNKNOWN] (${#ARGS[@]}) $lineModified"
                 fi
                 ;;
-              
+
               DIAGNOSTICS)
                 # Skip diagnostics if we have "DIAGNOSTICS      Success         Succeeded"
                 if [ "$(echo $line | awk '{ print $2; }')" == "Success" ] && [ "$(echo $line | awk '{ print $3; }')" == "Succeeded" ]; then
                   continue
                 fi
-                
+
                 # Just pipe off the DIAGNOSTICS
                 printf "${red}%s${reset}\n" "$(echo $line | sed -r 's/^DIAGNOSTICS\s*//g')"
-                ;; 
-              
+                ;;
+
               *)
                 printf "${red}${line}${reset}\n"
                 ;;
-                
+
             esac
 
           done # end: while
-        
+
         done # ~ end: instance
-        
+
         printf "\n\n"
         exit 1
       fi
-      
+
       # Deployment succeeded
       if [ "$STATUS" == "Succeeded" ]; then
          printf "\r${bold}Status${reset}  | In Progress: $IN_PROGRESS  | Pending: $PENDING  | Skipped: $SKIPPED  | Succeeded: $SUCCEEDED  | Failed: $FAILED  |\n"
