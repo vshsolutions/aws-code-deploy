@@ -133,6 +133,7 @@ Environment variables are used to control the deployment actions. A brief summar
 | `AWS_CODE_DEPLOY_S3_SSE`                  | No       | If specified and `true` will ensure the CodeDeploy archive is stored in S3 with Server Side Encryption (SSE) |
 | `AWS_CODE_DEPLOY_REVISION_DESCRIPTION`    | No       | A description that is stored within AWS Code Deploy that stores information about the specific revision |
 | `AWS_CODE_DEPLOY_DEPLOYMENT_DESCRIPTION`  | No       | A description that is stored within AWS Code Deploy that stores information about the specific deployment |
+| `AWS_CODE_DEPLOY_OUTPUT_STATUS_LIVE`      | No       | Boolean [true|false] that specifies whether the deployment status should use a single line showing live status. In CI environments where the "\r" is not supported, set this to false for better logging. Default = true |
 
 
 ## Examples

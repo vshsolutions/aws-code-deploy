@@ -489,13 +489,22 @@ note "You can follow your deployment at: https://console.aws.amazon.com/codedepl
 # see documentation http://docs.aws.amazon.com/cli/latest/reference/deploy/create-deployment.html
 # ----------------------
 DEPLOYMENT_OVERVIEW=${AWS_CODE_DEPLOY_DEPLOYMENT_OVERVIEW:-true}
-if [ "true" = "$DEPLOYMENT_OVERVIEW" ]; then
+if [ "true" == "$DEPLOYMENT_OVERVIEW" ]; then
   h1 "Deployment Overview"
 
   DEPLOYMENT_GET="aws deploy get-deployment --output json --deployment-id \"$DEPLOYMENT_ID\""
   h2 "Monitoring deployment \"$DEPLOYMENT_ID\" for \"$APPLICATION_NAME\" on deployment group $DEPLOYMENT_GROUP ..."
   info "$DEPLOYMENT_GET"
-  printf "\n"
+
+  # If the environment supports live reloading use carriage returns for a single line.
+  if [ "true" == "${AWS_CODE_DEPLOY_OUTPUT_STATUS_LIVE}" ]; then
+    status_opts="\r${bold}"
+    status_opts_live="\r${bold}${blink}"
+    printf "\n"
+  else
+    status_opts="\n${bold}"
+    status_opts_live="\n${bold}"
+  fi
 
   while :
     do
@@ -523,11 +532,11 @@ if [ "true" = "$DEPLOYMENT_OVERVIEW" ]; then
       STATUS=$(echo "$DEPLOYMENT_GET_OUTPUT" | jsonValue "status" | tr -d "\r\n" | tr -d " ")
       ERROR_MESSAGE=$(echo "$DEPLOYMENT_GET_OUTPUT" | jsonValue "message")
 
-      printf "\r${bold}${blink}Status${reset}  | In Progress: $IN_PROGRESS  | Pending: $PENDING  | Skipped: $SKIPPED  | Succeeded: $SUCCEEDED  | Failed: $FAILED  | "
+      printf "${status_opts_live}Status${reset}  | In Progress: $IN_PROGRESS  | Pending: $PENDING  | Skipped: $SKIPPED  | Succeeded: $SUCCEEDED  | Failed: $FAILED  | "
 
       # Print Failed Details
       if [ "$STATUS" == "Failed" ]; then
-        printf "\r${bold}Status${reset}  | In Progress: $IN_PROGRESS  | Pending: $PENDING  | Skipped: $SKIPPED  | Succeeded: $SUCCEEDED  | Failed: $FAILED  |\n"
+        printf "${status_opts}Status${reset}  | In Progress: $IN_PROGRESS  | Pending: $PENDING  | Skipped: $SKIPPED  | Succeeded: $SUCCEEDED  | Failed: $FAILED  | \n\n"       
         error "Deployment failed: $ERROR_MESSAGE"
 
         # Retrieve failed instances. Use text output here to easier retrieve array. Output format:
@@ -619,7 +628,7 @@ if [ "true" = "$DEPLOYMENT_OVERVIEW" ]; then
 
       # Deployment succeeded
       if [ "$STATUS" == "Succeeded" ]; then
-         printf "\r${bold}Status${reset}  | In Progress: $IN_PROGRESS  | Pending: $PENDING  | Skipped: $SKIPPED  | Succeeded: $SUCCEEDED  | Failed: $FAILED  |\n"
+         printf "${status_opts}Status${reset}  | In Progress: $IN_PROGRESS  | Pending: $PENDING  | Skipped: $SKIPPED  | Succeeded: $SUCCEEDED  | Failed: $FAILED  | \n\n"
          success "Deployment of application \"$APPLICATION_NAME\" on deployment group \"$DEPLOYMENT_GROUP\" succeeded"
          break
       fi
