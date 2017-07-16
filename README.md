@@ -102,10 +102,10 @@ Include the `aws-code-deploy` from NPM as a local or global dependency.
    
 #### **Global**
 1. `npm install aws-code-deploy -g`
-2. The file can then be executed directly: `aws-code-deploy`
+2. The file can then be executed globally: `aws-code-deploy`
   
 #### **Local**
-1. `npm install aws-code-deploy`
+1. `npm install aws-code-deploy --save-dev`
 2. The file can then be executed directly: `./node_modules/aws-code-deploy/bin/aws-code-deploy.sh`
 
 
