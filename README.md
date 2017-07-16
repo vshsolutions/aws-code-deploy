@@ -5,13 +5,11 @@
 [![npm](https://img.shields.io/npm/dt/aws-code-deploy.svg?style=flat-square&label=npm%20downloads)](https://www.npmjs.com/package/aws-code-deploy)
 [![Software License](https://img.shields.io/badge/license-MIT-blue.svg?style=flat-square)](https://raw.githubusercontent.com/techpivot/phalcon-ci-installer/master/LICENSE)
 
-
-This script deploys applications with the [AWS Code Deploy](http://docs.aws.amazon.com/codedeploy/latest/userguide/welcome.html) service. This script has been adapted to be easily portable and configurable via environment variables such that it can be incorporated within CI services that do not natively include support for Code Deploy. Additionally, this script includes additional functionality described below that is typically not included in out-of-box Code Deploy CI systems. For more information, refer to the [AWS Code Deploy](http://docs.aws.amazon.com/codedeploy/latest/userguide/welcome.html) documentation or
-the [AWS CLI API](http://docs.aws.amazon.com/cli/latest/reference/deploy/index.html).
+This script deploys applications with the [AWS Code Deploy](http://docs.aws.amazon.com/codedeploy/latest/userguide/welcome.html) service. The script uses the AWS CLI for underlying commands and extends functionality to provide common requirements for applications being deployed including compression, encryption, bucket revision limiting, monitoring, and more. It also handles creation of defined AWS Code Deploy components as necessary (e.g. Deployment Groups). By utilizing environment variables, this script is easily portable and intended to run inside CI containers. For more information, refer to the [AWS Code Deploy](http://docs.aws.amazon.com/codedeploy/latest/userguide/welcome.html) documentation or the [AWS CLI API](http://docs.aws.amazon.com/cli/latest/reference/deploy/index.html).
 
 ### Features:
- * Minimal dependencies: aws (If not installed automatically installed)
- * Compression of source contents
+ * One dependency: AWS CLI (Automatically installed if not available)
+ * Automatically compress source directory
  * Ability to limit the number of stored revisions by a key prefix to help reduce S3 total file size
  * Server side encryption for revisions
  * Full diagnostic output from failed instances
@@ -79,25 +77,41 @@ Status  | In Progress: 0  | Pending: 0  | Skipped: 0  | Succeeded: 1  | Failed: 
 ```
 
 
-## How to Include In Your Project
+## Usage
 
-### Composer (For PHP Projects)
-1. Include in `composer.json` as follows:
+### Composer (PHP Projects)
+1. Include the `techpivot/aws-code-deploy` project from Packagist as a development dependency:
 
+    **composer.json**
     ```json
     "require-dev" : {
         "techpivot/aws-code-deploy": "~1.0"
     }
     ```
-  * The file can then be executed from the /vendor/bin directory: `bash vendor/bin/aws-code-deploy.sh`
+    
+    or via command line:
+    
+    ```bash
+    composer require --dev techpivot/aws-code-deploy ~1.0
+    ```
+
+2. The file can then be executed directly: `./vendor/bin/aws-code-deploy.sh`
 
 ### NPM (General Projects)
+Include the `aws-code-deploy` from NPM as a local or global dependency.
+   
+#### **Global**
+1. `npm install aws-code-deploy -g`
+2. The file can then be executed directly: `aws-code-deploy`
+  
+#### **Local**
+1. `npm install aws-code-deploy`
+2. The file can then be executed directly: `./node_modules/aws-code-deploy/bin/aws-code-deploy.sh`
 
 
 ## Environment Variables
 
-Brief summary is listed in the table below. Full descriptions with recommendations can be found by searching
-the readme for the variable name.
+Environment variables are used to control the deployment actions. A brief summary is listed in the table below. Full descriptions with recommendations can be found by searching the readme for the variable name.
 
 | Variable                                  | Required | Description                                                |
 | :---------------------------------------- | :------- | :----------------------------------------------------------|
@@ -160,11 +174,6 @@ deployment:
       - bash vendor/bin/aws-code-deploy.sh
 ```
     
-### TravisCI
-
-### Manual
-
-
 ## IAM Requirements
 
 In order for the script to execute successfully, the specified AWS credentials must be granted the required 
