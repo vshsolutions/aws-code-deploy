@@ -142,8 +142,18 @@ if [ -z "$AWS_CODE_DEPLOY_DEPLOYMENT_GROUP_NAME" ]; then
   exit 1
 fi
 
+if [ -z "$AWS_CODE_DEPLOY_APP_SOURCE" ]; then
+  error "Please set the \"\$AWS_CODE_DEPLOY_APP_SOURCE\" to a pre-packaged bundle or a directory to be deployed"
+  exit 1
+fi
+
 if [ -z "$AWS_CODE_DEPLOY_S3_BUCKET" ]; then
   error "Please set the \"\$AWS_CODE_DEPLOY_S3_BUCKET\" variable"
+  exit 1
+fi
+
+if [ -z "$AWS_CODE_DEPLOY_S3_FILENAME" ]; then
+  error "Please set the \"\$AWS_CODE_DEPLOY_S3_FILENAME\" variable"
   exit 1
 fi
 
