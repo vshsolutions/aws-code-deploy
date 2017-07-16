@@ -384,9 +384,9 @@ if [ "$AWS_CODE_DEPLOY_S3_SSE" == "true" ]; then
   S3_CP="$S3_CP --sse AES256"
 fi
 
-runCommand "$S3_CP \"$APP_LOCAL_TEMP_FILE\" \"s3://$S3_FULL_BUCKET/$APP_LOCAL_FILE\"" \
-           "Unable to copy bundle \"$APP_LOCAL_FILE\" to S3" \
-           "Successfully copied bundle \"$APP_LOCAL_FILE\" to S3"
+runCommand "$S3_CP \"$APP_LOCAL_TEMP_FILE\" \"s3://$S3_FULL_BUCKET/$AWS_CODE_DEPLOY_S3_FILENAME\"" \
+           "Unable to copy bundle \"$APP_LOCAL_TEMP_FILE\" to S3" \
+           "Successfully copied bundle \"$APP_LOCAL_TEMP_FILE\" to s3://$S3_FULL_BUCKET/$AWS_CODE_DEPLOY_S3_FILENAME"
 
 
 
