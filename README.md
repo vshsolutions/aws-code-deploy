@@ -129,7 +129,7 @@ Environment variables are used to control the deployment actions. A brief summar
 | `AWS_CODE_DEPLOY_S3_BUCKET`               | **Yes**  | The name of the S3 bucket to deploy the revision |
 | `AWS_CODE_DEPLOY_S3_KEY_PREFIX`           | No       | A prefix to use for the revision bucket key |
 | `AWS_CODE_DEPLOY_S3_FILENAME`             | **Yes**  | The destination name within S3. |
-| `AWS_CODE_DEPLOY_S3_LIMIT_BUCKET_FILES`   | No       | Number of revisions to limit. If 0, unlimited. By default: 0 |
+| `AWS_CODE_DEPLOY_S3_LIMIT_BUCKET_FILES`   | No       | Number of revisions to limit. If 0, unlimited. Default = `0` |
 | `AWS_CODE_DEPLOY_S3_SSE`                  | No       | If specified and `true` will ensure the CodeDeploy archive is stored in S3 with Server Side Encryption (SSE) |
 | `AWS_CODE_DEPLOY_REVISION_DESCRIPTION`    | No       | A description that is stored within AWS Code Deploy that stores information about the specific revision |
 | `AWS_CODE_DEPLOY_DEPLOYMENT_DESCRIPTION`  | No       | A description that is stored within AWS Code Deploy that stores information about the specific deployment |
