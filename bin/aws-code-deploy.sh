@@ -370,24 +370,21 @@ fi
 # ----------------------
 h1 "Step 7: Copying Bundle to S3"
 S3_CP="aws s3 cp"
-S3_BUCKET="$AWS_CODE_DEPLOY_S3_BUCKET"
-S3_FULL_BUCKET="$S3_BUCKET"
-
-# Resolve dynamic
-AWS_CODE_DEPLOY_S3_FILENAME=$AWS_CODE_DEPLOY_S3_FILENAME
+S3_BUCKET=${AWS_CODE_DEPLOY_S3_BUCKET}
+S3_FULL_BUCKET=${S3_BUCKET}
 
 # Strip off any "/" from front and end, but allow inside
 S3_KEY_PREFIX=$(echo "${AWS_CODE_DEPLOY_S3_KEY_PREFIX}" | sed 's/^\/\?\(.*[^\/]\)\/\?$/\1/')
 
-if [ ! -z "$S3_KEY_PREFIX" ]; then
+if [ ! -z "${S3_KEY_PREFIX}" ]; then
     S3_FULL_BUCKET="${S3_FULL_BUCKET}/${S3_KEY_PREFIX}"
 fi
 
-if [ "$AWS_CODE_DEPLOY_S3_SSE" == "true" ]; then
+if [ "${AWS_CODE_DEPLOY_S3_SSE}" == "true" ]; then
   S3_CP="${S3_CP} --sse AES256"
 fi
 
-runCommand "$S3_CP \"$APP_LOCAL_TEMP_FILE\" \"s3://${S3_FULL_BUCKET}/${AWS_CODE_DEPLOY_S3_FILENAME}\"" \
+runCommand "${S3_CP} \"${APP_LOCAL_TEMP_FILE}\" \"s3://${S3_FULL_BUCKET}/${AWS_CODE_DEPLOY_S3_FILENAME}\"" \
            "Unable to copy bundle \"${APP_LOCAL_TEMP_FILE}\" to S3" \
            "Successfully copied bundle \"${APP_LOCAL_TEMP_FILE}\" to s3://${S3_FULL_BUCKET}/${AWS_CODE_DEPLOY_S3_FILENAME}"
 
@@ -448,18 +445,18 @@ h1 "Step 9: Registering Revision"
 REGISTER_APP_CMD="aws deploy register-application-revision --application-name \"$APPLICATION_NAME\""
 
 if [ -n "$S3_KEY_PREFIX" ]; then
-  S3_LOCATION="bucket=$S3_BUCKET,bundleType=$BUNDLE_TYPE,key=$S3_KEY_PREFIX/$APP_LOCAL_FILE"
+  S3_LOCATION="bucket=${S3_BUCKET},bundleType=${BUNDLE_TYPE},key=${S3_KEY_PREFIX}/${AWS_CODE_DEPLOY_S3_FILENAME}"
 else
-  S3_LOCATION="bucket=$S3_BUCKET,bundleType=$BUNDLE_TYPE,key=$APP_LOCAL_FILE"
+  S3_LOCATION="bucket=${S3_BUCKET},bundleType=${BUNDLE_TYPE},key=${AWS_CODE_DEPLOY_S3_FILENAME}"
 fi
 
-REGISTER_APP_CMD="$REGISTER_APP_CMD --s3-location $S3_LOCATION"
+REGISTER_APP_CMD="${REGISTER_APP_CMD} --s3-location ${S3_LOCATION}"
 
-if [ ! -z "$AWS_CODE_DEPLOY_REVISION_DESCRIPTION" ]; then
-    REGISTER_APP_CMD="$REGISTER_APP_CMD --description \"$AWS_CODE_DEPLOY_REVISION_DESCRIPTION\""
+if [ ! -z "${AWS_CODE_DEPLOY_REVISION_DESCRIPTION}" ]; then
+    REGISTER_APP_CMD="${REGISTER_APP_CMD} --description \"${AWS_CODE_DEPLOY_REVISION_DESCRIPTION}\""
 fi
 
-runCommand "$REGISTER_APP_CMD" \
+runCommand "${REGISTER_APP_CMD}" \
            "Registering revision failed" \
            "Registering revision succeeded"
 
