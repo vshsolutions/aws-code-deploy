@@ -157,6 +157,10 @@ if [ -z "$AWS_CODE_DEPLOY_S3_FILENAME" ]; then
   exit 1
 fi
 
+if [[ -n "$AWS_CODE_DEPLOY_DEPLOYMENT_FILE_EXISTS_BEHAVIOR" && ! "$AWS_CODE_DEPLOY_DEPLOYMENT_FILE_EXISTS_BEHAVIOR" =~ ^(DISALLOW|OVERWRITE|RETAIN)$ ]]; then
+  error "$AWS_CODE_DEPLOY_DEPLOYMENT_FILE_EXISTS_BEHAVIOR is not a valid option for the \"\$AWS_CODE_DEPLOY_DEPLOYMENT_FILE_EXISTS_BEHAVIOR\" variable"
+  exit 1
+fi
 
 
 # ----- Install AWS Cli -----
@@ -476,12 +480,18 @@ runCommand "${REGISTER_APP_CMD}" \
 # see documentation http://docs.aws.amazon.com/cli/latest/reference/deploy/create-deployment.html
 # ----------------------
 DEPLOYMENT_DESCRIPTION="$AWS_CODE_DEPLOY_DEPLOYMENT_DESCRIPTION"
+DEPLOYMENT_FILE_EXISTS_BEHAVIOR="$AWS_CODE_DEPLOY_DEPLOYMENT_FILE_EXISTS_BEHAVIOR"
 h1 "Step 10: Creating Deployment"
 DEPLOYMENT_CMD="aws deploy create-deployment --output json --application-name $APPLICATION_NAME --deployment-config-name $DEPLOYMENT_CONFIG_NAME --deployment-group-name $DEPLOYMENT_GROUP --s3-location $S3_LOCATION"
 
 if [ -n "$DEPLOYMENT_DESCRIPTION" ]; then
   DEPLOYMENT_CMD="$DEPLOYMENT_CMD --description \"$DEPLOYMENT_DESCRIPTION\""
 fi
+
+if [ -z "$DEPLOYMENT_FILE_EXISTS_BEHAVIOR" ]; then
+  DEPLOYMENT_FILE_EXISTS_BEHAVIOR="DISALLOW"
+fi
+DEPLOYMENT_CMD="$DEPLOYMENT_CMD --file-exists-behavior $DEPLOYMENT_FILE_EXISTS_BEHAVIOR"
 
 DEPLOYMENT_OUTPUT=""
 runCommand "$DEPLOYMENT_CMD" \
