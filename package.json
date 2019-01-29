@@ -1,6 +1,6 @@
 {
   "name": "aws-code-deploy",
-  "version": "1.0.9",
+  "version": "1.0.10",
   "description": "Bash script to easily deploy applications with AWS Code Deploy.",
   "author": "TechPivot",
   "main": "bin/aws-code-deploy.sh",
