@@ -329,6 +329,7 @@ fi
 
 # ----- Application Source -----
 h1 "Step 6: Checking Application Source"
+AWS_CODE_DEPLOY_APP_BUNDLE_TYPE=${AWS_CODE_DEPLOY_APP_BUNDLE_TYPE:-zip}
 APP_SOURCE=$(readlink -f "${AWS_CODE_DEPLOY_APP_SOURCE:-.}")
 
 if [ ! -d "$APP_SOURCE" -a ! -e "$APP_SOURCE" ]; then
@@ -341,19 +342,35 @@ if [ -d "$APP_SOURCE" ]; then
     error "The specified source directory \"${APP_SOURCE}\" does not contain an \"appspec.yml\" in the application root."
     exit 1
   fi
-  if ! typeExists "zip"; then
-    note "Installing zip binaries ..."
-    sudo apt-get install -y zip
-    note "Zip binaries installed."
+  if [ $AWS_CODE_DEPLOY_APP_BUNDLE_TYPE == "tgz" ]; then
+    if ! typeExists "tar" -o ! typeExists "gzip"; then
+      note "Installing tar and gzip binaries ..."
+      sudo apt-get install -y tar gzip
+      note "Tar and GZip binaries installed."
+    fi
+    BUNDLE_EXTENSION="tar.gz"
+  else  ## defaults to zip
+    if ! typeExists "zip"; then
+      note "Installing zip binaries ..."
+      sudo apt-get install -y zip
+      note "Zip binaries installed."
+    fi
+    BUNDLE_EXTENSION="zip"
   fi
   DEPLOYMENT_COMPRESS_ORIG_DIR_SIZE=$(du -hs $APP_SOURCE | awk '{ print $1}')
-  APP_LOCAL_FILE="${AWS_CODE_DEPLOY_S3_FILENAME%.*}.zip"
+  APP_LOCAL_FILE="${AWS_CODE_DEPLOY_S3_FILENAME%.*}.${BUNDLE_EXTENSION}"
   APP_LOCAL_TEMP_FILE="/tmp/$APP_LOCAL_FILE"
 
-  runCommand "cd \"$APP_SOURCE\" && zip -rq \"${APP_LOCAL_TEMP_FILE}\" ." \
-             "Unable to compress \"$APP_SOURCE\""
+  if [ $AWS_CODE_DEPLOY_APP_BUNDLE_TYPE == "tgz" ]; then
+    runCommand "tar -zcvf \"${APP_LOCAL_TEMP_FILE}\" -C \"$APP_SOURCE\" ." \
+               "Unable to compress \"$APP_SOURCE\""
+    BUNDLE_TYPE="tgz"
+  else  ## defaults to zip
+    runCommand "cd \"$APP_SOURCE\" && zip -rq \"${APP_LOCAL_TEMP_FILE}\" ." \
+               "Unable to compress \"$APP_SOURCE\""
+    BUNDLE_TYPE="zip"
+  fi
   DEPLOYMENT_COMPRESS_FILESIZE=$(ls -lah "${APP_LOCAL_TEMP_FILE}" | awk '{ print $5}')
-  BUNDLE_TYPE="zip"
   success "Successfully compressed \"$APP_SOURCE\" ($DEPLOYMENT_COMPRESS_ORIG_DIR_SIZE) into \"$APP_LOCAL_FILE\" ($DEPLOYMENT_COMPRESS_FILESIZE)"
 else
   APP_SOURCE_BASENAME=$(basename "$APP_SOURCE")
