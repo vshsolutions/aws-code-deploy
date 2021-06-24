@@ -1,6 +1,6 @@
 {
-  "name": "@vshsolutions/aws-code-deploy",
-  "version": "1.0.13",
+  "name": "@lvrg/aws-code-deploy",
+  "version": "1.0.14",
   "description": "Bash script to easily deploy applications with AWS Code Deploy.",
   "author": "TechPivot",
   "main": "bin/aws-code-deploy.sh",
